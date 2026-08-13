@@ -1,0 +1,328 @@
+// Screen switching + wiring input to the sim. The glue; no physics lives here.
+import { CONFIG } from "./config.js";
+import { PARTS } from "./parts.js";
+import { MILESTONES, MISSIONS } from "./missions.js";
+import { load, save, reset } from "./store.js";
+import { initState, step, applyAction, triggerReady, simulate } from "./sim.js";
+import { drawScene } from "./render.js";
+import { toggleMusic } from "./music.js";
+import { partArt, partSpecs } from "./partart.js";
+
+let game = load();
+let build = []; // ordered part ids, bottom -> top
+let plan = [];
+
+const $ = (id) => document.getElementById(id);
+const ctx = $("sky").getContext("2d");
+
+// ---- rocket assembly: turn a flat part list into stages the sim understands ----
+function normalizeRocket(partIds) {
+  const stages = [];
+  let probeMass = 0;
+  let hasParachute = false;
+  let cur = null;
+  for (const id of partIds) {
+    const p = PARTS[id];
+    if (!p) continue;
+    if (p.kind === "engine") {
+      cur = { thrust: p.thrust, burn: p.burn, dryMass: p.mass, fuel: 0 };
+      stages.push(cur);
+    } else if (p.kind === "tank") {
+      if (cur) { cur.fuel += p.fuel; cur.dryMass += p.mass; }
+    } else if (p.kind === "booster") {
+      // radial boosters fire with the bottom stage: just more thrust + fuel there
+      const s = stages[0];
+      if (s) { s.thrust += p.thrust; s.burn += p.burn; s.fuel += p.fuel; s.dryMass += p.mass; }
+    } else if (p.kind === "probe") {
+      probeMass += p.mass;
+    } else if (p.kind === "utility") {
+      probeMass += p.mass;
+      if (id === "parachute") hasParachute = true;
+    }
+  }
+  return { stages, probeMass, hasParachute };
+}
+
+function validate(rocket) {
+  if (rocket.stages.length === 0) return "Add an engine so your rocket can fly.";
+  if (rocket.probeMass === 0) return "Add a Probe — the rocket needs a brain.";
+  if (rocket.stages.some((s) => s.fuel === 0)) return "Every engine needs a Fuel Tank above it.";
+  return "";
+}
+
+function autoPlan(rocket, deploy) {
+  const p = [{ trigger: { type: "T", s: 0 }, action: "fire", label: "Ignition — light the engine" }];
+  for (let i = 1; i < rocket.stages.length; i++) {
+    p.push({ trigger: { type: "fuelEmpty" }, action: "dropStage", label: `Drop empty stage ${i}` });
+    p.push({ trigger: { type: "then" }, action: "fire", label: `Light stage ${i + 1}` });
+  }
+  if (deploy) p.push({ trigger: { type: "alt", m: CONFIG.SPACE_ALT }, action: "deploy", label: "Release satellite" });
+  return p;
+}
+
+// ---------------- BUILD screen ----------------
+function renderBuild() {
+  const pal = $("palette");
+  pal.innerHTML = "";
+  for (const id of game.unlockedParts) {
+    const p = PARTS[id];
+    const b = document.createElement("button");
+    b.className = "part";
+    b.innerHTML = `<div class="pi">${partArt(id)}</div><div class="pn">${p.name}</div><div class="pb">${p.blurb}</div><div class="pspec">${partSpecs(id)}</div>`;
+    b.onclick = () => { build.push(id); renderBuild(); };
+    pal.appendChild(b);
+  }
+
+  const stack = $("stack");
+  stack.innerHTML = "";
+  if (build.length === 0) {
+    stack.innerHTML = `<div class="empty">Empty pad — click parts to stack a rocket.</div>`;
+  } else {
+    // Assemble top-to-bottom: build[0] is the bottom (engine), so render reversed.
+    [...build.keys()].reverse().forEach((idx) => {
+      const id = build[idx];
+      const el = document.createElement("div");
+      el.className = "rpart";
+      el.title = `${PARTS[id].name} — click to remove`;
+      el.innerHTML = partArt(id);
+      el.onclick = () => { build.splice(idx, 1); renderBuild(); };
+      stack.appendChild(el);
+    });
+  }
+
+  const rocket = normalizeRocket(build);
+  const totalFuel = rocket.stages.reduce((n, s) => n + s.fuel, 0);
+  const mass = rocket.probeMass + rocket.stages.reduce((n, s) => n + s.dryMass + s.fuel, 0);
+  $("rocketStats").innerHTML =
+    `Stages: <b>${rocket.stages.length}</b> &nbsp;·&nbsp; Fuel: <b>${totalFuel.toLocaleString()}</b> kg ` +
+    `&nbsp;·&nbsp; Liftoff mass: <b>${Math.round(mass).toLocaleString()}</b> kg`;
+  $("buildWarn").textContent = validate(rocket);
+}
+
+// ---------------- PLAN screen ----------------
+function renderPlan() {
+  const rocket = normalizeRocket(build);
+  plan = autoPlan(rocket, $("deployToggle").checked);
+  const ol = $("planList");
+  ol.innerHTML = "";
+  for (const s of plan) {
+    const li = document.createElement("li");
+    li.textContent = s.label;
+    ol.appendChild(li);
+  }
+  if (plan.length === 0) ol.innerHTML = "<li>Build a rocket first.</li>";
+}
+
+// ---------------- KNOWLEDGE screen ----------------
+function renderKnowledge() {
+  $("kbal").textContent = game.knowledge;
+  $("kbal2").textContent = game.knowledge;
+  const grid = $("unlockGrid");
+  grid.innerHTML = "";
+  for (const id of Object.keys(PARTS)) {
+    const p = PARTS[id];
+    const owned = game.unlockedParts.includes(id);
+    const b = document.createElement("button");
+    b.className = "part " + (owned ? "owned" : "locked");
+    const priceLine = owned ? `<div class="price" style="color:var(--go)">Owned ✓</div>`
+      : `<div class="price">🧠 ${p.price}</div>`;
+    b.innerHTML = `<div class="pi">${partArt(id)}</div><div class="pn">${p.name}</div><div class="pb">${p.blurb}</div><div class="pspec">${partSpecs(id)}</div>${priceLine}`;
+    if (owned) b.disabled = true;
+    else if (game.knowledge < p.price) b.disabled = true;
+    else b.onclick = () => {
+      game.knowledge -= p.price;
+      game.unlockedParts.push(id);
+      save(game);
+      renderKnowledge();
+      renderBuild();
+    };
+    grid.appendChild(b);
+  }
+}
+
+// ---------------- MISSIONS screen ----------------
+function renderMissions() {
+  const list = $("missionList");
+  list.innerHTML = "";
+  for (const m of MISSIONS) {
+    const done = game.missionsDone.includes(m.id);
+    const d = document.createElement("div");
+    d.className = "mission " + (done ? "done" : "");
+    d.innerHTML = `<h3>${m.name} ${done ? "✅" : ""}</h3><p class="hint" style="margin:0 0 6px">${m.blurb}</p><span class="r">🧠 ${m.reward}${done ? " earned" : ""}</span>`;
+    list.appendChild(d);
+  }
+}
+
+// ---------------- LAUNCH screen ----------------
+let anim = null;
+let sim = null;
+let rocketNow = null;
+let mode = "auto";
+let stepIdx = 0;
+let prevFireT = 0;
+let frame = 0;
+
+function idleScene() {
+  const rocket = normalizeRocket(build);
+  const s = initState(rocket);
+  drawScene(ctx, s, rocket, CONFIG, 0);
+}
+
+function updateHUD() {
+  const s = sim;
+  const mm = String(Math.floor(s.t / 60)).padStart(2, "0");
+  const ss = String(Math.floor(s.t % 60)).padStart(2, "0");
+  $("clock").textContent = `T+ ${mm}:${ss}`;
+  $("tAlt").textContent = `${(s.altitude / 1000).toFixed(1)} km`;
+  const spd = Math.hypot(s.vSpeed, s.hSpeed);
+  $("tSpd").textContent = `${Math.round(spd)} m/s`;
+  const stage = rocketNow.stages[s.stageIndex];
+  const pct = stage ? (s.fuel / stage.fuel) * 100 : 0;
+  $("tFuel").style.width = `${Math.max(0, pct)}%`;
+}
+
+function renderChecklist(done) {
+  const box = $("checklist");
+  box.innerHTML = "";
+  plan.forEach((p, i) => {
+    const d = document.createElement("div");
+    d.className = "step" + (i < done ? " done" : "");
+    d.textContent = p.label;
+    box.appendChild(d);
+  });
+}
+
+function startLaunch() {
+  const rocket = normalizeRocket(build);
+  const err = validate(rocket);
+  if (err) { $("launchResult").textContent = "🚫 " + err; return; }
+
+  plan = autoPlan(rocket, $("deployToggle").checked);
+  rocketNow = rocket;
+  sim = initState(rocket);
+  sim.status = "flying";
+  stepIdx = 0; prevFireT = 0; frame = 0;
+  $("launchResult").textContent = "";
+  renderChecklist(0);
+  setHardEnabled(mode === "hard");
+  $("launchBtn").disabled = true;
+
+  let last = null;
+  const loop = (ts) => {
+    if (last == null) last = ts;
+    const realDt = Math.min(0.05, (ts - last) / 1000);
+    last = ts;
+    // advance the sim by TIME_SCALE sim-seconds per real second, in small steps
+    let simDt = realDt * CONFIG.TIME_SCALE;
+    while (simDt > 0 && sim.status === "flying") {
+      const dt = Math.min(CONFIG.DT, simDt);
+      if (mode === "auto") {
+        while (stepIdx < plan.length && triggerReady(plan[stepIdx].trigger, sim, prevFireT)) {
+          applyAction(sim, plan[stepIdx].action, rocketNow);
+          prevFireT = sim.t;
+          stepIdx++;
+          renderChecklist(stepIdx);
+        }
+      }
+      step(sim, dt, CONFIG, rocketNow);
+      simDt -= dt;
+    }
+    frame++;
+    drawScene(ctx, sim, rocketNow, CONFIG, frame);
+    updateHUD();
+    if (sim.status === "flying") {
+      anim = requestAnimationFrame(loop);
+    } else {
+      finishFlight(sim);
+    }
+  };
+  anim = requestAnimationFrame(loop);
+}
+
+function finishFlight(finalState) {
+  cancelAnimationFrame(anim);
+  anim = null;
+  setHardEnabled(false);
+  $("launchBtn").disabled = false;
+
+  const earned = [];
+  for (const m of MILESTONES) {
+    if (!game.milestonesEarned.includes(m.id) && m.check(finalState)) {
+      game.milestonesEarned.push(m.id);
+      game.knowledge += m.reward;
+      earned.push(`⭐ ${m.name}  +${m.reward} 🧠`);
+    }
+  }
+  for (const ms of MISSIONS) {
+    if (!game.missionsDone.includes(ms.id) && ms.check(finalState)) {
+      game.missionsDone.push(ms.id);
+      game.knowledge += ms.reward;
+      earned.push(`🎯 Mission complete: ${ms.name}  +${ms.reward} 🧠`);
+    }
+  }
+  save(game);
+  $("kbal").textContent = game.knowledge;
+
+  const head =
+    finalState.status === "orbit" ? "🛰️ You reached ORBIT!" :
+    finalState.status === "landed" ? "🪂 Safe landing!" :
+    finalState.status === "crashed" ? "💥 Crashed — try more fuel or a parachute." :
+    "Flight over.";
+  $("launchResult").textContent = [head, ...earned].join("\n");
+  renderKnowledge();
+  renderMissions();
+}
+
+function setHardEnabled(on) {
+  $("hardControls").querySelectorAll("button").forEach((b) => (b.disabled = !on));
+}
+
+// ---------------- nav + events ----------------
+function show(screen) {
+  document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("active", s.id === screen));
+  document.querySelectorAll("#nav button").forEach((b) => b.classList.toggle("active", b.dataset.screen === screen));
+  if (screen === "plan") renderPlan();
+  if (screen === "knowledge") renderKnowledge();
+  if (screen === "missions") renderMissions();
+  if (screen === "launch") { if (!anim) idleScene(); }
+}
+
+$("musicToggle").addEventListener("click", () => {
+  $("musicToggle").textContent = toggleMusic() ? "🔊" : "🔇";
+});
+
+$("nav").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (b) show(b.dataset.screen);
+});
+
+document.querySelectorAll('input[name="mode"]').forEach((r) =>
+  r.addEventListener("change", (e) => {
+    mode = e.target.value;
+    $("hardControls").hidden = mode !== "hard";
+    if (mode === "hard" && anim) setHardEnabled(true);
+  })
+);
+
+$("hardControls").addEventListener("click", (e) => {
+  const b = e.target.closest("button");
+  if (!b || b.disabled || !sim || sim.status !== "flying") return;
+  applyAction(sim, b.dataset.act, rocketNow);
+});
+
+$("launchBtn").addEventListener("click", startLaunch);
+$("resetBtn").addEventListener("click", () => {
+  if (anim) { cancelAnimationFrame(anim); anim = null; }
+  sim = null;
+  $("launchResult").textContent = "";
+  $("clock").textContent = "T+ 00:00";
+  renderChecklist(0);
+  setHardEnabled(false);
+  $("launchBtn").disabled = false;
+  idleScene();
+});
+
+// boot
+$("kbal").textContent = game.knowledge;
+renderBuild();
+show("build");

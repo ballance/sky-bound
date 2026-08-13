@@ -1,0 +1,11 @@
+.superpowers/
+.playwright-mcp/
+*.png
+node_modules/
+
+# terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan

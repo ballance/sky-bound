@@ -1,0 +1,10 @@
+{
+  "name": "skybound",
+  "version": "0.1.0",
+  "description": "A rocket assembly and space-flight simulator for kids.",
+  "type": "module",
+  "scripts": {
+    "test": "node js/sim.test.js",
+    "serve": "python3 -m http.server 8080"
+  }
+}

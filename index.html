@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SKYBOUND 🚀</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header>
+    <h1>SKYBOUND <span class="rk">🚀</span></h1>
+    <div class="knowledge">🧠 <span id="kbal">10</span></div>
+    <button id="musicToggle" class="music-btn" title="Music on/off">🔇</button>
+    <nav id="nav">
+      <button data-screen="build" class="active">Build</button>
+      <button data-screen="plan">Plan</button>
+      <button data-screen="launch">Launch</button>
+      <button data-screen="knowledge">Knowledge</button>
+      <button data-screen="missions">Missions</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- BUILD -->
+    <section id="build" class="screen active">
+      <div class="two-col">
+        <div class="panel">
+          <h2>Parts</h2>
+          <p class="hint">Click a part to add it. Stack an engine, then tanks, then a probe on top.</p>
+          <div id="palette" class="palette"></div>
+        </div>
+        <div class="panel">
+          <h2>Your Rocket</h2>
+          <div id="stack" class="stack"></div>
+          <div id="rocketStats" class="stats"></div>
+          <p id="buildWarn" class="warn"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- PLAN -->
+    <section id="plan" class="screen">
+      <div class="panel">
+        <h2>Flight Plan</h2>
+        <p class="hint">Your rocket runs these steps in order. In Hard Mode you fire them by hand.</p>
+        <ol id="planList" class="plan-list"></ol>
+        <label class="check"><input type="checkbox" id="deployToggle" /> Deploy a satellite when you reach space</label>
+      </div>
+    </section>
+
+    <!-- LAUNCH -->
+    <section id="launch" class="screen">
+      <div class="launch-grid">
+        <div class="stage-wrap">
+          <canvas id="sky" width="440" height="520"></canvas>
+        </div>
+        <div class="panel hud">
+          <div class="mode">
+            <label><input type="radio" name="mode" value="auto" checked /> Auto</label>
+            <label><input type="radio" name="mode" value="hard" /> Hard Mode</label>
+          </div>
+          <div class="clock" id="clock">T+ 00:00</div>
+          <div class="telemetry">
+            <div><span>Altitude</span><b id="tAlt">0 km</b></div>
+            <div><span>Speed</span><b id="tSpd">0 m/s</b></div>
+            <div class="fuel"><span>Fuel</span><div class="bar"><i id="tFuel"></i></div></div>
+          </div>
+          <div id="checklist" class="checklist"></div>
+          <div id="hardControls" class="hard-controls" hidden>
+            <button data-act="fire">🔥 Fire</button>
+            <button data-act="cut">✋ Cut</button>
+            <button data-act="dropStage">⏏️ Drop Stage</button>
+            <button data-act="deploy">🛰️ Deploy</button>
+          </div>
+          <div class="launch-buttons">
+            <button id="launchBtn" class="primary">Launch 🚀</button>
+            <button id="resetBtn">Reset</button>
+          </div>
+          <p id="launchResult" class="result"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- KNOWLEDGE -->
+    <section id="knowledge" class="screen">
+      <div class="panel">
+        <h2>Knowledge — 🧠 <span id="kbal2">10</span></h2>
+        <p class="hint">Earn knowledge by doing space firsts, then spend it to unlock parts.</p>
+        <div id="unlockGrid" class="palette"></div>
+      </div>
+    </section>
+
+    <!-- MISSIONS -->
+    <section id="missions" class="screen">
+      <div class="panel">
+        <h2>Missions</h2>
+        <div id="missionList" class="mission-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
