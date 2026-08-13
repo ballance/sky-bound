@@ -85,6 +85,26 @@ function boosterShape(cx, bottomY, h) {
   );
 }
 
+// Translucent aerodynamic shell drawn over the core parts, so the launching
+// rocket reads as one sleek cylinder while the internals show through.
+const AERO_DEFS =
+  `<defs><linearGradient id="aeroSheen" x1="0" y1="0" x2="1" y2="0">` +
+  `<stop offset="0" stop-color="#96aacd" stop-opacity="0.18"/>` +
+  `<stop offset="0.32" stop-color="#ffffff" stop-opacity="0.26"/>` +
+  `<stop offset="0.55" stop-color="#ffffff" stop-opacity="0.05"/>` +
+  `<stop offset="1" stop-color="#6e82a5" stop-opacity="0.22"/>` +
+  `</linearGradient></defs>`;
+function aeroShell(coreH) {
+  const d =
+    `M 20 2 C 33 8, 33 18, 33 28 L 33 ${coreH - 10} ` +
+    `C 33 ${coreH - 2}, 30 ${coreH}, 24 ${coreH} L 16 ${coreH} ` +
+    `C 10 ${coreH}, 7 ${coreH - 2}, 7 ${coreH - 10} L 7 28 C 7 18, 7 8, 20 2 Z`;
+  return (
+    `<path d="${d}" fill="url(#aeroSheen)" stroke="#e8f0fc" stroke-opacity="0.5" stroke-width="1"/>` +
+    `<rect x="12" y="9" width="2.4" height="${coreH - 26}" rx="1.2" fill="#ffffff" opacity="0.26"/>`
+  );
+}
+
 // Compose stacked part ids (bottom-first, as stored in `build`) into ONE rocket
 // SVG matching the build. Side boosters attach radially to the core's base.
 const STACK_STEP = 48; // vertical units per part (56 tall, ~8 overlap)
@@ -96,12 +116,12 @@ export function rocketSVG(ids) {
 
   const topFirst = [...coreIds].reverse();
   const coreH = 56 + STACK_STEP * (Math.max(1, topFirst.length) - 1);
-  const coreParts = topFirst
-    .map((id, i) => `<g transform="translate(0,${i * STACK_STEP})">${inner(id)}</g>`)
-    .join("");
+  const core =
+    topFirst.map((id, i) => `<g transform="translate(0,${i * STACK_STEP})">${inner(id)}</g>`).join("") +
+    aeroShell(coreH); // sleek translucent skin over the internals
 
   if (!boosters) {
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 ${coreH}" width="40" height="${coreH}">${coreParts}</svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 ${coreH}" width="40" height="${coreH}">${AERO_DEFS}${core}</svg>`;
   }
 
   const W = 96;
@@ -113,7 +133,7 @@ export function rocketSVG(ids) {
     const tier = Math.floor(i / 2);
     boosterSvg += boosterShape(coreX + 20 + side * (24 + tier * 12), coreH - 6 - tier * 10, bH - tier * 8);
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${coreH}" width="${W}" height="${coreH}">${boosterSvg}<g transform="translate(${coreX},0)">${coreParts}</g></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${coreH}" width="${W}" height="${coreH}">${AERO_DEFS}${boosterSvg}<g transform="translate(${coreX},0)">${core}</g></svg>`;
 }
 
 // Thrust like 1.05 MN / 380 kN
