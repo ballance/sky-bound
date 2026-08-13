@@ -25,7 +25,8 @@ header {
   border-bottom: 1px solid #263056;
   flex-wrap: wrap;
 }
-.brand { margin: 0; line-height: 0; }
+.brand { margin: 0; display: flex; align-items: center; gap: 11px; }
+.meatball { height: 40px; width: 40px; flex: none; filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4)); }
 .wordmark { height: 42px; width: auto; display: block; overflow: visible; }
 .wm-text {
   font-family: "Helvetica Neue", "Arial Narrow", Arial, sans-serif;
