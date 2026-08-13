@@ -27,6 +27,7 @@ export function initState(rocket) {
     stageIndex: 0,
     fuel: rocket.stages[0] ? rocket.stages[0].fuel : 0,
     engineOn: false,
+    throttle: 0, // engines spool up from 0 → 1 so liftoff is gradual
     status: "ready", // ready | flying | orbit | landed | crashed
     deployed: false,
     fairingJettisoned: false,
@@ -56,8 +57,11 @@ export function step(state, dt, cfg = CONFIG, rocket) {
 
   const stage = activeStage(state, rocket);
   const thrusting = state.engineOn && stage && state.fuel > 0;
-  const F = thrusting ? stage.thrust : 0;
-  if (thrusting) state.fuel = Math.max(0, state.fuel - stage.burn * dt);
+  // spool the throttle toward full while firing; thrust and fuel burn both
+  // scale with it, so a real gradual liftoff costs no extra fuel.
+  if (thrusting) state.throttle = Math.min(1, state.throttle + dt / cfg.THROTTLE_RAMP);
+  const F = thrusting ? stage.thrust * state.throttle : 0;
+  if (thrusting) state.fuel = Math.max(0, state.fuel - stage.burn * state.throttle * dt);
 
   const mass = currentMass(state, rocket);
   const p = pitch(state.altitude, cfg);
@@ -72,14 +76,16 @@ export function step(state, dt, cfg = CONFIG, rocket) {
   state.maxAlt = Math.max(state.maxAlt, state.altitude);
   state.maxHSpeed = Math.max(state.maxHSpeed, state.hSpeed);
 
-  // touchdown
-  if (state.altitude <= 0 && state.vSpeed < 0) {
+  // ground: the pad holds the rocket during spool-up (thrust < weight). Only a
+  // return from actual flight (it climbed away) counts as a landing or crash.
+  if (state.altitude <= 0) {
     state.altitude = 0;
-    const touchdown = -state.vSpeed;
-    const soft = touchdown <= cfg.CRASH_SPEED || rocket.hasParachute;
-    state.status = soft ? "landed" : "crashed";
-    state.vSpeed = 0;
-    return state;
+    if (state.maxAlt > 20 && state.vSpeed < 0) {
+      const soft = -state.vSpeed <= cfg.CRASH_SPEED || rocket.hasParachute;
+      state.status = soft ? "landed" : "crashed";
+    }
+    if (state.vSpeed < 0) state.vSpeed = 0; // pad (or standing) holds it down at 0
+    if (state.status !== "flying") return state;
   }
 
   // orbit
@@ -99,6 +105,7 @@ export function applyAction(state, action, rocket) {
     if (state.stageIndex < rocket.stages.length - 1) {
       state.stageIndex += 1;
       state.fuel = rocket.stages[state.stageIndex].fuel;
+      state.throttle = 0; // the next engine spools up from zero too
       // next stage auto-ignites if the engine was already running
     } else {
       state.stageIndex = rocket.stages.length; // nothing left to burn

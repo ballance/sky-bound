@@ -10,7 +10,8 @@ export const CONFIG = {
 
   // Sim stepping
   DT: 0.05, // seconds per physics step (small = stable)
-  TIME_SCALE: 5, // sim-seconds per real-second, so a long flight is watchable
+  TIME_SCALE: 8, // sim-seconds per real-second, so a long flight is watchable
+  THROTTLE_RAMP: 2.5, // seconds for engines to spool from 0 to full thrust
 
   // Pitch program: the rocket flies straight up, then tilts over to build
   // sideways speed. Same in auto and hard mode (an 8-year-old flies the

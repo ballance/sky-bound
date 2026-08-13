@@ -8,7 +8,7 @@ function init() {
   const AC = window.AudioContext || window.webkitAudioContext;
   ctx = new AC();
   master = ctx.createGain();
-  master.gain.value = 0.32;
+  master.gain.value = 0.4;
   master.connect(ctx.destination);
 }
 
@@ -61,10 +61,57 @@ const ready = () => {
 };
 
 export function beep() { if (ready()) tone(680, 0.12, { type: "square", vol: 0.22 }); }
+
+// A loud, sustained engine rumble: filtered noise + a sub-bass tone, held on
+// while the engines burn. setRumble(false) fades it out.
+let rumble = null;
+export function setRumble(on) {
+  if (!enabled) return;
+  resume();
+  const t = ctx.currentTime;
+  if (on && !rumble) {
+    const dur = 1.0;
+    const len = Math.floor(ctx.sampleRate * dur);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 170;
+    const nGain = ctx.createGain();
+    nGain.gain.value = 1.4;
+    const sub = ctx.createOscillator();
+    sub.type = "sine";
+    sub.frequency.value = 42;
+    const sGain = ctx.createGain();
+    sGain.gain.value = 0.6;
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.exponentialRampToValueAtTime(1.0, t + 0.6); // swell in
+    src.connect(lp).connect(nGain).connect(env);
+    sub.connect(sGain).connect(env);
+    env.connect(master);
+    src.start(t);
+    sub.start(t);
+    rumble = { src, sub, env };
+  } else if (!on && rumble) {
+    const { src, sub, env } = rumble;
+    env.gain.cancelScheduledValues(t);
+    env.gain.setValueAtTime(Math.max(0.0001, env.gain.value), t);
+    env.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+    src.stop(t + 0.4);
+    sub.stop(t + 0.4);
+    rumble = null;
+  }
+}
+
 export function liftoff() {
-  if (!ready()) return;
-  tone(900, 0.5, { type: "square", vol: 0.26, to: 1300 });
-  noise(1.6, { vol: 0.5, lp: 520 }); // engine rumble
+  if (!ready()) return; // punchy ignition; the sustained rumble carries the rest
+  noise(0.5, { vol: 0.7, lp: 420 });
+  tone(90, 0.5, { type: "sawtooth", vol: 0.4, to: 45 });
 }
 export function stageSep() {
   if (!ready()) return;

@@ -203,6 +203,7 @@ let rocketImg = null;
 let lastStageIndex = 0;
 let lastFairing = false;
 let lastDeployed = false;
+let lastThrusting = false;
 let postFrames = -1; // frames to keep animating effects after the flight ends
 let countdownTimer = null;
 
@@ -302,6 +303,7 @@ function beginFlight(rocket) {
   lastStageIndex = 0;
   lastFairing = false;
   lastDeployed = false;
+  lastThrusting = false;
   postFrames = -1;
   resetEffects();
   rocketImg = buildRocketImage(build);
@@ -341,6 +343,9 @@ function beginFlight(rocket) {
     if (sim.stageIndex > lastStageIndex) sfx.stageSep();
     if (sim.fairingJettisoned && !lastFairing) sfx.fairing();
     if (sim.deployed && !lastDeployed) { lastDeployed = true; sfx.deploy(); }
+    // engine rumble follows the throttle: on while burning, off when it cuts
+    const thrusting = sim.engineOn && sim.fuel > 0 && sim.stageIndex < rocketNow.stages.length;
+    if (thrusting !== lastThrusting) { sfx.setRumble(thrusting); lastThrusting = thrusting; }
     // shed parts from the drawn rocket when a stage drops or the fairing jettisons
     if (sim.stageIndex !== lastStageIndex || sim.fairingJettisoned !== lastFairing) {
       lastStageIndex = sim.stageIndex;
@@ -370,6 +375,8 @@ function beginFlight(rocket) {
 function finishFlight(finalState) {
   cancelAnimationFrame(anim);
   anim = null;
+  lastThrusting = false;
+  sfx.setRumble(false);
   setHardEnabled(false);
   $("launchBtn").disabled = false;
   $("abortBtn").disabled = true;
@@ -468,6 +475,8 @@ $("abortBtn").addEventListener("click", () => {
 $("resetBtn").addEventListener("click", () => {
   if (anim) { cancelAnimationFrame(anim); anim = null; }
   if (countdownTimer) { clearTimeout(countdownTimer); countdownTimer = null; }
+  sfx.setRumble(false);
+  lastThrusting = false;
   sim = null;
   $("launchResult").textContent = "";
   $("clock").textContent = "T+ 00:00";
