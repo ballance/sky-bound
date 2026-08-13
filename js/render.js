@@ -187,18 +187,19 @@ function drawMoon(ctx, w, h, t) {
 function drawPad(ctx, w, y) {
   const cx = w / 2;
 
-  // water tower (far left): sphere on legs with a SPACEX label
-  const wx = cx - 150;
+  // water tower (far left): big sphere on legs with a readable SkyBound label
+  const wx = cx - 158;
   ctx.strokeStyle = "#c8ccd4";
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(wx - 9, y); ctx.lineTo(wx - 2, y - 72); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(wx + 9, y); ctx.lineTo(wx + 2, y - 72); ctx.stroke();
+  ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(wx - 15, y); ctx.lineTo(wx - 4, y - 96); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(wx + 15, y); ctx.lineTo(wx + 4, y - 96); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(wx - 10, y - 40); ctx.lineTo(wx + 10, y - 40); ctx.stroke(); // cross-brace
   ctx.fillStyle = "#eef1f7";
-  ctx.beginPath(); ctx.arc(wx, y - 80, 13, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = "#8a9099";
-  ctx.font = "bold 5.5px system-ui, sans-serif";
+  ctx.beginPath(); ctx.arc(wx, y - 108, 22, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#5a6270";
+  ctx.font = "bold 9px system-ui, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("SkyBound", wx, y - 78);
+  ctx.fillText("SkyBound", wx, y - 105);
 
   // lightning mast (far right): tall mast with guy wires
   const lx = cx + 150;
@@ -237,17 +238,6 @@ function drawPad(ctx, w, y) {
   // Crew Access Arm — white beam reaching from the tower to the rocket
   ctx.fillStyle = "#e9edf5";
   ctx.fillRect(tx + tw, y - 122, cx - 12 - (tx + tw), 7);
-
-  // Transporter-Erector (strongback) — white truss leaning back to the right
-  ctx.strokeStyle = "#dfe4ee";
-  ctx.lineWidth = 9;
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.moveTo(cx + 18, y);
-  ctx.lineTo(cx + 78, y - 150);
-  ctx.stroke();
-  ctx.lineWidth = 1;
-  ctx.lineCap = "butt";
 }
 
 export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0, rocketImg = null) {
