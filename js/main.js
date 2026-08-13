@@ -6,6 +6,7 @@ import { load, save, reset } from "./store.js";
 import { initState, step, applyAction, triggerReady, simulate } from "./sim.js";
 import { drawScene, resetEffects } from "./render.js";
 import { toggleMusic } from "./music.js";
+import * as sfx from "./sfx.js";
 import { partArt, partSpecs, rocketSVG } from "./partart.js";
 
 let game = load();
@@ -201,7 +202,9 @@ let frame = 0;
 let rocketImg = null;
 let lastStageIndex = 0;
 let lastFairing = false;
+let lastDeployed = false;
 let postFrames = -1; // frames to keep animating effects after the flight ends
+let countdownTimer = null;
 
 // Rasterize the assembled build into one image the launch view can draw.
 function buildRocketImage(ids) {
@@ -266,6 +269,31 @@ function startLaunch() {
   const err = validate(rocket);
   if (err) { $("launchResult").textContent = "🚫 " + err; return; }
 
+  sfx.resume(); // the click is our gesture to enable audio
+  $("launchResult").textContent = "";
+  $("launchBtn").disabled = true;
+  $("abortBtn").disabled = true;
+  setHardEnabled(false);
+  idleScene(); // rocket waits on the pad through the countdown
+
+  // 3… 2… 1… liftoff, with a beep on each count
+  let n = 3;
+  const tick = () => {
+    if (n > 0) {
+      $("clock").textContent = `T- 00:0${n}`;
+      sfx.beep();
+      n -= 1;
+      countdownTimer = setTimeout(tick, 800);
+    } else {
+      countdownTimer = null;
+      $("clock").textContent = "T+ 00:00";
+      beginFlight(rocket);
+    }
+  };
+  tick();
+}
+
+function beginFlight(rocket) {
   plan = autoPlan(rocket, $("deployToggle").checked);
   rocketNow = rocket;
   sim = initState(rocket);
@@ -273,14 +301,14 @@ function startLaunch() {
   stepIdx = 0; prevFireT = 0; frame = 0;
   lastStageIndex = 0;
   lastFairing = false;
+  lastDeployed = false;
   postFrames = -1;
   resetEffects();
   rocketImg = buildRocketImage(build);
-  $("launchResult").textContent = "";
   renderChecklist(0);
   setHardEnabled(mode === "hard");
-  $("launchBtn").disabled = true;
   $("abortBtn").disabled = false;
+  sfx.liftoff();
 
   // Fire every plan step whose trigger is now satisfied (auto mode only).
   const fireDue = () => {
@@ -309,6 +337,10 @@ function startLaunch() {
     // final sweep so end-of-flight triggers still fire — e.g. release the
     // satellite the instant orbit is reached (orbit ends the sim same-tick).
     fireDue();
+    // sound effects on state changes (checked before the trackers update)
+    if (sim.stageIndex > lastStageIndex) sfx.stageSep();
+    if (sim.fairingJettisoned && !lastFairing) sfx.fairing();
+    if (sim.deployed && !lastDeployed) { lastDeployed = true; sfx.deploy(); }
     // shed parts from the drawn rocket when a stage drops or the fairing jettisons
     if (sim.stageIndex !== lastStageIndex || sim.fairingJettisoned !== lastFairing) {
       lastStageIndex = sim.stageIndex;
@@ -322,7 +354,12 @@ function startLaunch() {
       anim = requestAnimationFrame(loop);
     } else {
       // let the ending play out (big tail for explosions, short for clean ends)
-      if (postFrames < 0) postFrames = sim.status === "crashed" || sim.status === "aborted" ? 80 : 6;
+      if (postFrames < 0) {
+        postFrames = sim.status === "crashed" || sim.status === "aborted" ? 80 : 6;
+        if (sim.status === "orbit") sfx.orbit();
+        else if (sim.status === "landed") sfx.deploy();
+        else sfx.boom();
+      }
       if (postFrames > 0) { postFrames--; anim = requestAnimationFrame(loop); }
       else finishFlight(sim);
     }
@@ -430,6 +467,7 @@ $("abortBtn").addEventListener("click", () => {
 });
 $("resetBtn").addEventListener("click", () => {
   if (anim) { cancelAnimationFrame(anim); anim = null; }
+  if (countdownTimer) { clearTimeout(countdownTimer); countdownTimer = null; }
   sim = null;
   $("launchResult").textContent = "";
   $("clock").textContent = "T+ 00:00";
