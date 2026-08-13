@@ -89,10 +89,10 @@ function boosterShape(cx, bottomY, h) {
 // rocket reads as one sleek cylinder while the internals show through.
 const AERO_DEFS =
   `<defs><linearGradient id="aeroSheen" x1="0" y1="0" x2="1" y2="0">` +
-  `<stop offset="0" stop-color="#96aacd" stop-opacity="0.18"/>` +
-  `<stop offset="0.32" stop-color="#ffffff" stop-opacity="0.26"/>` +
-  `<stop offset="0.55" stop-color="#ffffff" stop-opacity="0.05"/>` +
-  `<stop offset="1" stop-color="#6e82a5" stop-opacity="0.22"/>` +
+  `<stop offset="0" stop-color="#96aacd" stop-opacity="0.30"/>` +
+  `<stop offset="0.32" stop-color="#ffffff" stop-opacity="0.38"/>` +
+  `<stop offset="0.55" stop-color="#ffffff" stop-opacity="0.17"/>` +
+  `<stop offset="1" stop-color="#6e82a5" stop-opacity="0.34"/>` +
   `</linearGradient></defs>`;
 function aeroShell(coreH) {
   const d =

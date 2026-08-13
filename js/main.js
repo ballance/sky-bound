@@ -205,7 +205,7 @@ let lastFairing = false;
 let lastDeployed = false;
 let lastThrusting = false;
 let postFrames = -1; // frames to keep animating effects after the flight ends
-let countdownTimer = null;
+let countdownTimers = []; // all scheduled callouts/ticks of the launch sequence
 
 // Rasterize the assembled build into one image the launch view can draw.
 function buildRocketImage(ids) {
@@ -276,22 +276,54 @@ function startLaunch() {
   $("abortBtn").disabled = true;
   setHardEnabled(false);
   idleScene(); // rocket waits on the pad through the countdown
+  runCountdown(rocket);
+}
 
-  // 3… 2… 1… liftoff, with a beep on each count
-  let n = 3;
-  const tick = () => {
-    if (n > 0) {
-      $("clock").textContent = `T- 00:0${n}`;
-      sfx.beep();
-      n -= 1;
-      countdownTimer = setTimeout(tick, 800);
-    } else {
-      countdownTimer = null;
-      $("clock").textContent = "T+ 00:00";
-      beginFlight(rocket);
-    }
-  };
-  tick();
+function clearCountdown() {
+  for (const id of countdownTimers) clearTimeout(id);
+  countdownTimers = [];
+  sfx.cancelSpeech();
+}
+
+// A real-time T-60 launch sequence: flight director go/no-go poll, then the
+// terminal count. Each callout is a scheduled speech line; the clock ticks 1/s.
+function runCountdown(rocket) {
+  clearCountdown();
+  // schedule fn at the given T-minus second (real-time: 1s per second)
+  const at = (sec, fn) => countdownTimers.push(setTimeout(fn, (60 - sec) * 1000));
+  const dir = (t) => sfx.speak(t, { pitch: 0.66, rate: 0.95 }); // flight director
+  const lead = (t) => sfx.speak(t, { pitch: 0.92, rate: 1.12 }); // a system lead's reply
+  const call = (t) => sfx.speak(t, { pitch: 0.72, rate: 1.0 }); // launch announcer
+
+  for (let s = 60; s >= 0; s--) {
+    at(s, () => {
+      $("clock").textContent = s > 0 ? `T- 00:${String(s).padStart(2, "0")}` : "T+ 00:00";
+      if (s <= 10 && s >= 1) sfx.beep();
+    });
+  }
+
+  at(60, () => dir("T minus sixty seconds and counting."));
+  at(52, () => dir("All stations, this is the flight director. Stand by for go, no go for launch."));
+  at(47, () => dir("Booster?")); at(46, () => lead("Go, flight!"));
+  at(45, () => dir("Guidance?")); at(44, () => lead("Guidance is go!"));
+  at(43, () => dir("Propulsion?")); at(42, () => lead("Propulsion, go!"));
+  at(41, () => dir("Fido?")); at(40, () => lead("Fido is go!"));
+  at(39, () => dir("Eecom?")); at(38, () => lead("Go, flight!"));
+  at(37, () => dir("Range safety?")); at(36, () => lead("Range is go!"));
+  at(34, () => dir("Copy that. We are go for launch!"));
+  at(20, () => call("T minus twenty seconds."));
+  at(15, () => call("Guidance is internal."));
+  at(10, () => call("Ten"));
+  at(9, () => call("nine")); at(8, () => call("eight")); at(7, () => call("seven"));
+  at(6, () => call("six. Ignition sequence start."));
+  at(5, () => call("five")); at(4, () => call("four")); at(3, () => call("three"));
+  at(2, () => call("two")); at(1, () => call("one"));
+  at(0, () => {
+    countdownTimers = [];
+    $("clock").textContent = "T+ 00:00";
+    call("Zero. We have liftoff!");
+    beginFlight(rocket);
+  });
 }
 
 function beginFlight(rocket) {
@@ -474,7 +506,7 @@ $("abortBtn").addEventListener("click", () => {
 });
 $("resetBtn").addEventListener("click", () => {
   if (anim) { cancelAnimationFrame(anim); anim = null; }
-  if (countdownTimer) { clearTimeout(countdownTimer); countdownTimer = null; }
+  clearCountdown();
   sfx.setRumble(false);
   lastThrusting = false;
   sim = null;

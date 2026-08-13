@@ -62,6 +62,46 @@ const ready = () => {
 
 export function beep() { if (ready()) tone(680, 0.12, { type: "square", vol: 0.22 }); }
 
+// Spoken launch callouts via the browser's built-in speech synthesis (no deps).
+// Picks a male English voice and speaks low and steady, mission-control style.
+let voice = null;
+let voicePicked = false;
+function pickMale(vs) {
+  return (
+    vs.find((v) => /male/i.test(v.name) && /^en/i.test(v.lang)) ||
+    vs.find((v) => /(daniel|alex|fred|arthur|george|david|mark|guy|aaron|rishi)/i.test(v.name)) ||
+    vs.find((v) => /^en/i.test(v.lang)) ||
+    vs[0] ||
+    null
+  );
+}
+function ensureVoice() {
+  if (voicePicked) return;
+  const synth = window.speechSynthesis;
+  if (!synth) return;
+  const vs = synth.getVoices();
+  if (vs.length) { voice = pickMale(vs); voicePicked = true; }
+  else if (!synth.onvoiceschanged) synth.onvoiceschanged = () => { voice = pickMale(synth.getVoices()); voicePicked = true; };
+}
+// Degrades silently where speechSynthesis or voices are unavailable.
+export function speak(text, { rate = 0.95, pitch = 0.7 } = {}) {
+  if (!enabled) return;
+  try {
+    const synth = window.speechSynthesis;
+    if (!synth) return;
+    ensureVoice();
+    const u = new SpeechSynthesisUtterance(text);
+    if (voice) u.voice = voice;
+    u.rate = rate;
+    u.pitch = pitch; // low, male mission-control tone
+    u.volume = 1;
+    synth.speak(u);
+  } catch { /* no TTS available */ }
+}
+export function cancelSpeech() {
+  try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+}
+
 // A loud, sustained engine rumble: filtered noise + a sub-bass tone, held on
 // while the engines burn. setRumble(false) fades it out.
 let rumble = null;
