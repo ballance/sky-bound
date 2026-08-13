@@ -19,7 +19,12 @@ export function load() {
     if (!raw) return defaults();
     const s = JSON.parse(raw);
     // shallow-merge so a partial/old save never crashes the game
-    return { ...defaults(), ...s };
+    const merged = { ...defaults(), ...s };
+    // ensure every starting part is owned (covers old saves + newly-promoted parts)
+    for (const id of STARTING_PARTS) {
+      if (!merged.unlockedParts.includes(id)) merged.unlockedParts.push(id);
+    }
+    return merged;
   } catch {
     return defaults();
   }

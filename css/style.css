@@ -85,10 +85,11 @@ h2 { margin: 0 0 8px; font-size: 19px; }
   border: 1px solid #33407a;
   border-radius: 10px;
   padding: 10px;
-  cursor: pointer;
+  cursor: grab;
   text-align: left;
   color: var(--ink);
 }
+.part:active { cursor: grabbing; }
 .part:hover { border-color: var(--accent); }
 .part .pi { display: flex; justify-content: center; align-items: flex-end; height: 62px; background: #0d1330; border-radius: 8px; margin-bottom: 8px; }
 .part-svg { display: block; }
@@ -104,7 +105,8 @@ h2 { margin: 0 0 8px; font-size: 19px; }
 .part.owned { border-color: var(--go); }
 .part[disabled] { opacity: 0.4; cursor: not-allowed; }
 
-.stack { display: flex; flex-direction: column; align-items: center; min-height: 200px; padding: 22px 10px; background: linear-gradient(#0d1330, #0a1128); border-radius: 10px; }
+.stack { display: flex; flex-direction: column; align-items: center; min-height: 200px; padding: 22px 10px; background: linear-gradient(#0d1330, #0a1128); border-radius: 10px; transition: outline-color 0.1s; }
+.stack.drop-hot { outline: 2px dashed var(--accent); outline-offset: -5px; background: #101a3e; }
 .rpart { cursor: pointer; line-height: 0; margin-bottom: -14px; transition: filter 0.1s; }
 .rpart:last-child { margin-bottom: 0; }
 .rpart:hover { filter: drop-shadow(0 0 5px var(--bad)); }

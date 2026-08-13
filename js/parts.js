@@ -50,5 +50,5 @@ export const PARTS = {
   },
 };
 
-export const STARTING_PARTS = ["bigEngine", "smallEngine", "tank", "probe"];
+export const STARTING_PARTS = ["bigEngine", "smallEngine", "tank", "probe", "fairing"];
 export const START_KNOWLEDGE = 10;

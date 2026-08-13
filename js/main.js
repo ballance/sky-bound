@@ -66,6 +66,17 @@ function autoPlan(rocket, deploy) {
   return p;
 }
 
+// Which build slot a drop at screen-y `y` maps to. Stack renders top-first
+// (build is bottom-first), so a visual index converts to build.length - v.
+function dropIndexFromY(stackEl, y) {
+  const kids = [...stackEl.querySelectorAll(".rpart")];
+  for (let i = 0; i < kids.length; i++) {
+    const r = kids[i].getBoundingClientRect();
+    if (y < r.top + r.height / 2) return i;
+  }
+  return kids.length;
+}
+
 // ---------------- BUILD screen ----------------
 function renderBuild() {
   const pal = $("palette");
@@ -74,8 +85,13 @@ function renderBuild() {
     const p = PARTS[id];
     const b = document.createElement("button");
     b.className = "part";
+    b.draggable = true;
     b.innerHTML = `<div class="pi">${partArt(id)}</div><div class="pn">${p.name}</div><div class="pb">${p.blurb}</div><div class="pspec">${partSpecs(id)}</div>`;
-    b.onclick = () => { build.push(id); renderBuild(); };
+    b.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/plain", id);
+      e.dataTransfer.effectAllowed = "copy";
+    });
+    b.onclick = () => { build.push(id); renderBuild(); }; // click = quick-add on top
     pal.appendChild(b);
   }
 
@@ -251,6 +267,17 @@ function startLaunch() {
   $("launchBtn").disabled = true;
   $("abortBtn").disabled = false;
 
+  // Fire every plan step whose trigger is now satisfied (auto mode only).
+  const fireDue = () => {
+    if (mode !== "auto") return;
+    while (stepIdx < plan.length && triggerReady(plan[stepIdx].trigger, sim, prevFireT)) {
+      applyAction(sim, plan[stepIdx].action, rocketNow);
+      prevFireT = sim.t;
+      stepIdx++;
+      renderChecklist(stepIdx);
+    }
+  };
+
   let last = null;
   const loop = (ts) => {
     if (last == null) last = ts;
@@ -260,17 +287,13 @@ function startLaunch() {
     let simDt = realDt * CONFIG.TIME_SCALE;
     while (simDt > 0 && sim.status === "flying") {
       const dt = Math.min(CONFIG.DT, simDt);
-      if (mode === "auto") {
-        while (stepIdx < plan.length && triggerReady(plan[stepIdx].trigger, sim, prevFireT)) {
-          applyAction(sim, plan[stepIdx].action, rocketNow);
-          prevFireT = sim.t;
-          stepIdx++;
-          renderChecklist(stepIdx);
-        }
-      }
+      fireDue();
       step(sim, dt, CONFIG, rocketNow);
       simDt -= dt;
     }
+    // final sweep so end-of-flight triggers still fire — e.g. release the
+    // satellite the instant orbit is reached (orbit ends the sim same-tick).
+    fireDue();
     // shed parts from the drawn rocket when a stage drops or the fairing jettisons
     if (sim.stageIndex !== lastStageIndex || sim.fairingJettisoned !== lastFairing) {
       lastStageIndex = sim.stageIndex;
@@ -349,6 +372,23 @@ $("musicToggle").addEventListener("click", () => {
 $("nav").addEventListener("click", (e) => {
   const b = e.target.closest("button");
   if (b) show(b.dataset.screen);
+});
+
+// keep the flight-plan list in sync with the deploy toggle
+$("deployToggle").addEventListener("change", renderPlan);
+
+// drag a part from the palette and drop it onto the rocket to place it
+const stackEl = $("stack");
+stackEl.addEventListener("dragover", (e) => { e.preventDefault(); stackEl.classList.add("drop-hot"); });
+stackEl.addEventListener("dragleave", () => stackEl.classList.remove("drop-hot"));
+stackEl.addEventListener("drop", (e) => {
+  e.preventDefault();
+  stackEl.classList.remove("drop-hot");
+  const id = e.dataTransfer.getData("text/plain");
+  if (!PARTS[id]) return;
+  const v = dropIndexFromY(stackEl, e.clientY);
+  build.splice(build.length - v, 0, id); // convert visual slot to build index
+  renderBuild();
 });
 
 document.querySelectorAll('input[name="mode"]').forEach((r) =>
