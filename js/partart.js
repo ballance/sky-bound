@@ -71,17 +71,49 @@ export function partArt(id) {
   return `<svg viewBox="0 0 40 56" class="part-svg">${inner(id)}</svg>`;
 }
 
+// A side booster silhouette (nose cone + body + flared nozzle) centred at cx,
+// standing on bottomY with height h. Used to flank the core radially.
+function boosterShape(cx, bottomY, h) {
+  const topY = bottomY - h;
+  const nose = topY + 12;
+  return (
+    `<g>` +
+    `<path d="M${cx} ${topY} L${cx + 6} ${nose} L${cx + 6} ${bottomY - 6} L${cx - 6} ${bottomY - 6} L${cx - 6} ${nose} Z" fill="#e9edf5"/>` +
+    `<path d="M${cx} ${topY} L${cx + 6} ${nose} L${cx - 6} ${nose} Z" fill="#c23b3b"/>` +
+    `<path d="M${cx - 6} ${bottomY - 6} L${cx - 8} ${bottomY} L${cx + 8} ${bottomY} L${cx + 6} ${bottomY - 6} Z" fill="#8a9099"/>` +
+    `</g>`
+  );
+}
+
 // Compose stacked part ids (bottom-first, as stored in `build`) into ONE rocket
-// SVG that matches the assembled build — used to draw the launch-view rocket.
+// SVG matching the build. Side boosters attach radially to the core's base.
 const STACK_STEP = 48; // vertical units per part (56 tall, ~8 overlap)
 export function rocketSVG(ids) {
   if (!ids.length) return "";
-  const topFirst = [...ids].reverse();
-  const h = 56 + STACK_STEP * (topFirst.length - 1);
-  const parts = topFirst
+  const isBooster = (id) => (PARTS[id] || {}).kind === "booster";
+  const coreIds = ids.filter((id) => !isBooster(id));
+  const boosters = ids.filter(isBooster).length;
+
+  const topFirst = [...coreIds].reverse();
+  const coreH = 56 + STACK_STEP * (Math.max(1, topFirst.length) - 1);
+  const coreParts = topFirst
     .map((id, i) => `<g transform="translate(0,${i * STACK_STEP})">${inner(id)}</g>`)
     .join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 ${h}" width="40" height="${h}">${parts}</svg>`;
+
+  if (!boosters) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 ${coreH}" width="40" height="${coreH}">${coreParts}</svg>`;
+  }
+
+  const W = 96;
+  const coreX = (W - 40) / 2; // centre the 40-wide core in the wider box
+  const bH = Math.min(coreH * 0.6, coreH - 20);
+  let boosterSvg = "";
+  for (let i = 0; i < boosters; i++) {
+    const side = i % 2 === 0 ? -1 : 1;
+    const tier = Math.floor(i / 2);
+    boosterSvg += boosterShape(coreX + 20 + side * (24 + tier * 12), coreH - 6 - tier * 10, bH - tier * 8);
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${coreH}" width="${W}" height="${coreH}">${boosterSvg}<g transform="translate(${coreX},0)">${coreParts}</g></svg>`;
 }
 
 // Thrust like 1.05 MN / 380 kN

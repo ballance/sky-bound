@@ -98,15 +98,30 @@ function renderBuild() {
   const stack = $("stack");
   stack.innerHTML = "";
   if (build.length === 0) {
-    stack.innerHTML = `<div class="empty">Empty pad — click parts to stack a rocket.</div>`;
+    stack.innerHTML = `<div class="empty">Empty pad — drag parts here to build a rocket.</div>`;
   } else {
-    // Assemble top-to-bottom: build[0] is the bottom (engine), so render reversed.
-    [...build.keys()].reverse().forEach((idx) => {
-      const id = build[idx];
+    const coreIdx = [];
+    const boosterIdx = [];
+    build.forEach((id, idx) => (PARTS[id].kind === "booster" ? boosterIdx : coreIdx).push(idx));
+
+    // core stacks vertically, top-first (build[0] is the bottom engine)
+    [...coreIdx].reverse().forEach((idx) => {
       const el = document.createElement("div");
       el.className = "rpart";
-      el.title = `${PARTS[id].name} — click to remove`;
-      el.innerHTML = partArt(id);
+      el.title = `${PARTS[build[idx]].name} — click to remove`;
+      el.innerHTML = partArt(build[idx]);
+      el.onclick = () => { build.splice(idx, 1); renderBuild(); };
+      stack.appendChild(el);
+    });
+
+    // side boosters attach radially to the base, alternating left/right
+    boosterIdx.forEach((idx, i) => {
+      const el = document.createElement("div");
+      el.className = "booster-side";
+      el.style[i % 2 === 0 ? "left" : "right"] = "calc(50% - 68px)";
+      el.style.bottom = `${44 + Math.floor(i / 2) * 44}px`;
+      el.title = `${PARTS[build[idx]].name} — click to remove`;
+      el.innerHTML = partArt(build[idx]);
       el.onclick = () => { build.splice(idx, 1); renderBuild(); };
       stack.appendChild(el);
     });
