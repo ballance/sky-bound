@@ -120,6 +120,8 @@ button.primary, .launch-buttons button, .hard-controls button {
   border-radius: 8px; padding: 10px 14px; font-size: 15px; cursor: pointer;
 }
 button.primary { background: var(--accent); border-color: var(--accent); color: #04101f; font-weight: 700; }
+button.abort { background: #7a1f1f; border-color: #a83232; color: #ffe3e3; font-weight: 700; }
+button.abort:not([disabled]):hover { background: #9a2626; }
 button:hover:not([disabled]) { filter: brightness(1.1); }
 button[disabled] { opacity: 0.4; cursor: not-allowed; }
 .result { min-height: 40px; font-weight: 600; margin-top: 10px; white-space: pre-line; }

@@ -21,4 +21,7 @@ export const CONFIG = {
 
   // Failure
   CRASH_SPEED: 12, // m/s downward at touchdown you can survive without a chute
+
+  // Fairings jettison once the air is thin enough that the payload is safe
+  FAIRING_ALT: 45_000, // 45 km
 };

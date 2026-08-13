@@ -58,6 +58,11 @@ const ART_INNER = {
     <path d="M23 30 L34 48" stroke="#8a9099" stroke-width="3" fill="none"/>
     <rect x="2" y="47" width="9" height="3" rx="1" fill="#5a6069"/>
     <rect x="29" y="47" width="9" height="3" rx="1" fill="#5a6069"/>`,
+  fairing: `
+    <path d="M20 3 C13 16 11 34 11 50 L29 50 C29 34 27 16 20 3 Z" fill="#eef1f7"/>
+    <path d="M20 3 C13 16 11 34 11 50 L20 50 Z" fill="#dfe4ee"/>
+    <line x1="20" y1="6" x2="20" y2="50" stroke="#b6bdcb" stroke-width="1"/>
+    <line x1="11" y1="50" x2="29" y2="50" stroke="#c7ccd6" stroke-width="2"/>`,
 };
 
 const inner = (id) => ART_INNER[id] || FALLBACK;
@@ -98,6 +103,8 @@ export function partSpecs(id) {
       return `Control core · <b>${kg(p.mass)}</b>`;
     case "utility":
       return id === "parachute" ? `Safe landing · <b>${kg(p.mass)}</b>` : `Land upright · <b>${kg(p.mass)}</b>`;
+    case "fairing":
+      return `Shields payload · <b>${kg(p.mass)}</b>`;
     default:
       return kg(p.mass || 0);
   }

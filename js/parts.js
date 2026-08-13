@@ -43,6 +43,11 @@ export const PARTS = {
     mass: 200, price: 12,
     blurb: "Land the booster upright, SpaceX-style.",
   },
+  fairing: {
+    id: "fairing", name: "Payload Fairing", kind: "fairing", icon: "🔺",
+    mass: 150, price: 7,
+    blurb: "Nose cone that shields the payload, then splits away in space.",
+  },
 };
 
 export const STARTING_PARTS = ["bigEngine", "smallEngine", "tank", "probe"];

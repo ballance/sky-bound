@@ -4,7 +4,7 @@ import { PARTS } from "./parts.js";
 import { MILESTONES, MISSIONS } from "./missions.js";
 import { load, save, reset } from "./store.js";
 import { initState, step, applyAction, triggerReady, simulate } from "./sim.js";
-import { drawScene } from "./render.js";
+import { drawScene, resetEffects } from "./render.js";
 import { toggleMusic } from "./music.js";
 import { partArt, partSpecs, rocketSVG } from "./partart.js";
 
@@ -20,6 +20,8 @@ function normalizeRocket(partIds) {
   const stages = [];
   let probeMass = 0;
   let hasParachute = false;
+  let hasFairing = false;
+  let fairingMass = 0;
   let cur = null;
   for (const id of partIds) {
     const p = PARTS[id];
@@ -38,9 +40,12 @@ function normalizeRocket(partIds) {
     } else if (p.kind === "utility") {
       probeMass += p.mass;
       if (id === "parachute") hasParachute = true;
+    } else if (p.kind === "fairing") {
+      hasFairing = true;
+      fairingMass += p.mass;
     }
   }
-  return { stages, probeMass, hasParachute };
+  return { stages, probeMass, hasParachute, hasFairing, fairingMass };
 }
 
 function validate(rocket) {
@@ -56,6 +61,7 @@ function autoPlan(rocket, deploy) {
     p.push({ trigger: { type: "fuelEmpty" }, action: "dropStage", label: `Drop empty stage ${i}` });
     p.push({ trigger: { type: "then" }, action: "fire", label: `Light stage ${i + 1}` });
   }
+  if (rocket.hasFairing) p.push({ trigger: { type: "alt", m: CONFIG.FAIRING_ALT }, action: "jettisonFairing", label: "Jettison fairings" });
   if (deploy) p.push({ trigger: { type: "alt", m: CONFIG.SPACE_ALT }, action: "deploy", label: "Release satellite" });
   return p;
 }
@@ -92,7 +98,7 @@ function renderBuild() {
 
   const rocket = normalizeRocket(build);
   const totalFuel = rocket.stages.reduce((n, s) => n + s.fuel, 0);
-  const mass = rocket.probeMass + rocket.stages.reduce((n, s) => n + s.dryMass + s.fuel, 0);
+  const mass = rocket.probeMass + rocket.fairingMass + rocket.stages.reduce((n, s) => n + s.dryMass + s.fuel, 0);
   $("rocketStats").innerHTML =
     `Stages: <b>${rocket.stages.length}</b> &nbsp;·&nbsp; Fuel: <b>${totalFuel.toLocaleString()}</b> kg ` +
     `&nbsp;·&nbsp; Liftoff mass: <b>${Math.round(mass).toLocaleString()}</b> kg`;
@@ -163,6 +169,8 @@ let prevFireT = 0;
 let frame = 0;
 let rocketImg = null;
 let lastStageIndex = 0;
+let lastFairing = false;
+let postFrames = -1; // frames to keep animating effects after the flight ends
 
 // Rasterize the assembled build into one image the launch view can draw.
 function buildRocketImage(ids) {
@@ -172,8 +180,8 @@ function buildRocketImage(ids) {
   return img;
 }
 
-// Which build parts remain once `stageIndex` stages have been dropped.
-function partsForStageIndex(ids, stageIndex) {
+// Which build parts are still attached: drops shed stages and a jettisoned fairing.
+function visibleParts(ids, stageIndex, fairingGone) {
   let stage = -1;
   const keep = [];
   for (const id of ids) {
@@ -182,12 +190,14 @@ function partsForStageIndex(ids, stageIndex) {
     if (p.kind === "engine") { stage++; if (stage >= stageIndex) keep.push(id); }
     else if (p.kind === "tank") { if (stage >= stageIndex) keep.push(id); }
     else if (p.kind === "booster") { if (stageIndex <= 0) keep.push(id); }
+    else if (p.kind === "fairing") { if (!fairingGone) keep.push(id); }
     else keep.push(id); // probe / utility ride all the way up
   }
   return keep;
 }
 
 function idleScene() {
+  resetEffects();
   const rocket = normalizeRocket(build);
   const s = initState(rocket);
   rocketImg = buildRocketImage(build);
@@ -231,11 +241,15 @@ function startLaunch() {
   sim.status = "flying";
   stepIdx = 0; prevFireT = 0; frame = 0;
   lastStageIndex = 0;
+  lastFairing = false;
+  postFrames = -1;
+  resetEffects();
   rocketImg = buildRocketImage(build);
   $("launchResult").textContent = "";
   renderChecklist(0);
   setHardEnabled(mode === "hard");
   $("launchBtn").disabled = true;
+  $("abortBtn").disabled = false;
 
   let last = null;
   const loop = (ts) => {
@@ -257,10 +271,11 @@ function startLaunch() {
       step(sim, dt, CONFIG, rocketNow);
       simDt -= dt;
     }
-    // shed parts from the drawn rocket when a stage is dropped
-    if (sim.stageIndex !== lastStageIndex) {
+    // shed parts from the drawn rocket when a stage drops or the fairing jettisons
+    if (sim.stageIndex !== lastStageIndex || sim.fairingJettisoned !== lastFairing) {
       lastStageIndex = sim.stageIndex;
-      rocketImg = buildRocketImage(partsForStageIndex(build, sim.stageIndex));
+      lastFairing = sim.fairingJettisoned;
+      rocketImg = buildRocketImage(visibleParts(build, sim.stageIndex, sim.fairingJettisoned));
     }
     frame++;
     drawScene(ctx, sim, rocketNow, CONFIG, frame, rocketImg);
@@ -268,7 +283,10 @@ function startLaunch() {
     if (sim.status === "flying") {
       anim = requestAnimationFrame(loop);
     } else {
-      finishFlight(sim);
+      // let the ending play out (big tail for explosions, short for clean ends)
+      if (postFrames < 0) postFrames = sim.status === "crashed" || sim.status === "aborted" ? 80 : 6;
+      if (postFrames > 0) { postFrames--; anim = requestAnimationFrame(loop); }
+      else finishFlight(sim);
     }
   };
   anim = requestAnimationFrame(loop);
@@ -279,6 +297,7 @@ function finishFlight(finalState) {
   anim = null;
   setHardEnabled(false);
   $("launchBtn").disabled = false;
+  $("abortBtn").disabled = true;
 
   const earned = [];
   for (const m of MILESTONES) {
@@ -301,6 +320,7 @@ function finishFlight(finalState) {
   const head =
     finalState.status === "orbit" ? "🛰️ You reached ORBIT!" :
     finalState.status === "landed" ? "🪂 Safe landing!" :
+    finalState.status === "aborted" ? "💥 Rapid Unscheduled Disassembly! (You hit ABORT.)" :
     finalState.status === "crashed" ? "💥 Crashed — try more fuel or a parachute." :
     "Flight over.";
   $("launchResult").textContent = [head, ...earned].join("\n");
@@ -346,6 +366,13 @@ $("hardControls").addEventListener("click", (e) => {
 });
 
 $("launchBtn").addEventListener("click", startLaunch);
+$("abortBtn").addEventListener("click", () => {
+  // Rapid Unscheduled Disassembly — the loop handles the explosion + ending.
+  if (sim && sim.status === "flying") {
+    sim.status = "aborted";
+    sim.engineOn = false;
+  }
+});
 $("resetBtn").addEventListener("click", () => {
   if (anim) { cancelAnimationFrame(anim); anim = null; }
   sim = null;
@@ -354,6 +381,7 @@ $("resetBtn").addEventListener("click", () => {
   renderChecklist(0);
   setHardEnabled(false);
   $("launchBtn").disabled = false;
+  $("abortBtn").disabled = true;
   idleScene();
 });
 

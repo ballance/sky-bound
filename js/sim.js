@@ -29,6 +29,7 @@ export function initState(rocket) {
     engineOn: false,
     status: "ready", // ready | flying | orbit | landed | crashed
     deployed: false,
+    fairingJettisoned: false,
     maxAlt: 0,
     maxHSpeed: 0,
   };
@@ -37,6 +38,7 @@ export function initState(rocket) {
 // remaining mass = probe + every stage not yet dropped (current burns its fuel)
 function currentMass(state, rocket) {
   let m = rocket.probeMass;
+  if (rocket.hasFairing && !state.fairingJettisoned) m += rocket.fairingMass || 0;
   for (let i = state.stageIndex; i < rocket.stages.length; i++) {
     m += rocket.stages[i].dryMass;
     m += i === state.stageIndex ? state.fuel : rocket.stages[i].fuel;
@@ -92,6 +94,7 @@ export function applyAction(state, action, rocket) {
   if (action === "fire") state.engineOn = true;
   else if (action === "cut") state.engineOn = false;
   else if (action === "deploy") state.deployed = true;
+  else if (action === "jettisonFairing") state.fairingJettisoned = true;
   else if (action === "dropStage") {
     if (state.stageIndex < rocket.stages.length - 1) {
       state.stageIndex += 1;

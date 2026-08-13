@@ -6,6 +6,7 @@ export const MILESTONES = [
   { id: "space", name: "First to Space (100 km)", reward: 10, check: (s) => s.maxAlt >= 100_000 },
   { id: "orbit", name: "First Orbit", reward: 20, check: (s) => s.status === "orbit" },
   { id: "deploy", name: "First Satellite Deployed", reward: 10, check: (s) => s.deployed },
+  { id: "fairing", name: "First Fairing Separation", reward: 8, check: (s) => s.fairingJettisoned },
   { id: "landing", name: "First Booster Landing", reward: 15, check: (s) => s.status === "landed" },
 ];
 
