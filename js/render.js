@@ -22,7 +22,7 @@ const STARS = Array.from({ length: 90 }, (_, i) => ({
   s: 0.6 + ((i * 7) % 5) * 0.35,
 }));
 
-export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0) {
+export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0, rocketImg = null) {
   const w = ctx.canvas.width;
   const h = ctx.canvas.height;
   const mPerPx = 6; // vertical meters per pixel
@@ -67,13 +67,19 @@ export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0) {
     ctx.fillRect(w / 2 - 26, groundY, 52, 8); // pad
   }
 
-  // --- the rocket ---
-  const tilt = pitch(state.altitude, cfg); // radians from vertical
+  // --- the rocket: the actual assembled build, rasterized from its part art ---
+  const tilt = pitch(state.altitude, cfg) * 0.9; // lean over as it pitches
   const thrusting = state.engineOn && state.fuel > 0 && state.stageIndex < rocket.stages.length;
   ctx.save();
   ctx.translate(w / 2, rocketY);
-  ctx.rotate(tilt * 0.9); // lean over as it pitches
-  drawRocket(ctx, thrusting, frame);
+  ctx.rotate(tilt);
+  if (thrusting) drawFlame(ctx, frame);
+  if (rocketImg && rocketImg.complete && rocketImg.naturalWidth) {
+    const n = Math.max(1, Math.round((rocketImg.naturalHeight - 8) / 48)); // parts stacked
+    const dh = 34 + 26 * n; // taller rockets draw bigger
+    const dw = dh * (rocketImg.naturalWidth / rocketImg.naturalHeight);
+    ctx.drawImage(rocketImg, -dw / 2, -dh, dw, dh); // engine base sits at y=0
+  }
   ctx.restore();
 
   // --- deployed satellite drifts near the rocket ---
@@ -91,47 +97,16 @@ export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0) {
   else if (state.status === "crashed") banner(ctx, w, "💥  CRASH", "#f88");
 }
 
-function drawRocket(ctx, thrusting, frame) {
-  // flame first (below the rocket) so the body sits on top
-  if (thrusting) {
-    const flick = 0.7 + 0.3 * Math.sin(frame * 0.9);
-    const len = 26 * flick + (frame % 3);
-    ctx.fillStyle = "#ffd24a";
-    ctx.beginPath();
-    ctx.moveTo(-6, 16);
-    ctx.lineTo(6, 16);
-    ctx.lineTo(0, 16 + len);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = "#ff7a2a";
-    ctx.beginPath();
-    ctx.moveTo(-3, 16);
-    ctx.lineTo(3, 16);
-    ctx.lineTo(0, 16 + len * 0.6);
-    ctx.closePath();
-    ctx.fill();
-  }
-  // body
-  ctx.fillStyle = "#e9edf5";
+// Engine exhaust, drawn from the base (y=0) downward in the rocket's frame.
+function drawFlame(ctx, frame) {
+  const flick = 0.7 + 0.3 * Math.sin(frame * 0.9);
+  const len = 22 * flick + (frame % 3);
+  ctx.fillStyle = "#ffd24a";
   ctx.beginPath();
-  ctx.moveTo(0, -22); // nose
-  ctx.lineTo(7, -6);
-  ctx.lineTo(7, 16);
-  ctx.lineTo(-7, 16);
-  ctx.lineTo(-7, -6);
-  ctx.closePath();
-  ctx.fill();
-  // window
-  ctx.fillStyle = "#4aa3ff";
+  ctx.moveTo(-8, 0); ctx.lineTo(8, 0); ctx.lineTo(0, len); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = "#ff7a2a";
   ctx.beginPath();
-  ctx.arc(0, -2, 3.2, 0, Math.PI * 2);
-  ctx.fill();
-  // fins
-  ctx.fillStyle = "#c23b3b";
-  ctx.beginPath();
-  ctx.moveTo(-7, 6); ctx.lineTo(-13, 18); ctx.lineTo(-7, 16); ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(7, 6); ctx.lineTo(13, 18); ctx.lineTo(7, 16); ctx.fill();
+  ctx.moveTo(-4, 0); ctx.lineTo(4, 0); ctx.lineTo(0, len * 0.6); ctx.closePath(); ctx.fill();
 }
 
 function banner(ctx, w, text, color) {

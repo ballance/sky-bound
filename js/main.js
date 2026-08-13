@@ -6,7 +6,7 @@ import { load, save, reset } from "./store.js";
 import { initState, step, applyAction, triggerReady, simulate } from "./sim.js";
 import { drawScene } from "./render.js";
 import { toggleMusic } from "./music.js";
-import { partArt, partSpecs } from "./partart.js";
+import { partArt, partSpecs, rocketSVG } from "./partart.js";
 
 let game = load();
 let build = []; // ordered part ids, bottom -> top
@@ -161,11 +161,39 @@ let mode = "auto";
 let stepIdx = 0;
 let prevFireT = 0;
 let frame = 0;
+let rocketImg = null;
+let lastStageIndex = 0;
+
+// Rasterize the assembled build into one image the launch view can draw.
+function buildRocketImage(ids) {
+  if (!ids.length) return null;
+  const img = new Image();
+  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(rocketSVG(ids));
+  return img;
+}
+
+// Which build parts remain once `stageIndex` stages have been dropped.
+function partsForStageIndex(ids, stageIndex) {
+  let stage = -1;
+  const keep = [];
+  for (const id of ids) {
+    const p = PARTS[id];
+    if (!p) continue;
+    if (p.kind === "engine") { stage++; if (stage >= stageIndex) keep.push(id); }
+    else if (p.kind === "tank") { if (stage >= stageIndex) keep.push(id); }
+    else if (p.kind === "booster") { if (stageIndex <= 0) keep.push(id); }
+    else keep.push(id); // probe / utility ride all the way up
+  }
+  return keep;
+}
 
 function idleScene() {
   const rocket = normalizeRocket(build);
   const s = initState(rocket);
-  drawScene(ctx, s, rocket, CONFIG, 0);
+  rocketImg = buildRocketImage(build);
+  const paint = () => drawScene(ctx, s, rocket, CONFIG, 0, rocketImg);
+  if (rocketImg && !rocketImg.complete) rocketImg.onload = paint;
+  paint();
 }
 
 function updateHUD() {
@@ -202,6 +230,8 @@ function startLaunch() {
   sim = initState(rocket);
   sim.status = "flying";
   stepIdx = 0; prevFireT = 0; frame = 0;
+  lastStageIndex = 0;
+  rocketImg = buildRocketImage(build);
   $("launchResult").textContent = "";
   renderChecklist(0);
   setHardEnabled(mode === "hard");
@@ -227,8 +257,13 @@ function startLaunch() {
       step(sim, dt, CONFIG, rocketNow);
       simDt -= dt;
     }
+    // shed parts from the drawn rocket when a stage is dropped
+    if (sim.stageIndex !== lastStageIndex) {
+      lastStageIndex = sim.stageIndex;
+      rocketImg = buildRocketImage(partsForStageIndex(build, sim.stageIndex));
+    }
     frame++;
-    drawScene(ctx, sim, rocketNow, CONFIG, frame);
+    drawScene(ctx, sim, rocketNow, CONFIG, frame, rocketImg);
     updateHUD();
     if (sim.status === "flying") {
       anim = requestAnimationFrame(loop);
