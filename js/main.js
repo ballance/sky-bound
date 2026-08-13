@@ -10,11 +10,14 @@ import * as sfx from "./sfx.js";
 import { partArt, partSpecs, rocketSVG } from "./partart.js";
 
 let game = load();
-let build = []; // ordered part ids, bottom -> top
+let build = []; // ordered { id, fuel } items, bottom -> top (fuel only for tanks/boosters)
 let plan = [];
 
 const $ = (id) => document.getElementById(id);
 const ctx = $("sky").getContext("2d");
+
+const makeItem = (id) => ({ id, fuel: PARTS[id].fuel }); // fuel is undefined for non-tank parts
+const buildIds = () => build.map((b) => b.id);
 
 // ---- rocket assembly: turn a flat part list into stages the sim understands ----
 function normalizeRocket(partIds) {
@@ -24,18 +27,20 @@ function normalizeRocket(partIds) {
   let hasFairing = false;
   let fairingMass = 0;
   let cur = null;
-  for (const id of partIds) {
+  for (const item of partIds) {
+    const id = item.id;
     const p = PARTS[id];
     if (!p) continue;
+    const fuel = item.fuel ?? p.fuel; // per-tank amount, defaulting to capacity
     if (p.kind === "engine") {
       cur = { thrust: p.thrust, burn: p.burn, dryMass: p.mass, fuel: 0 };
       stages.push(cur);
     } else if (p.kind === "tank") {
-      if (cur) { cur.fuel += p.fuel; cur.dryMass += p.mass; }
+      if (cur) { cur.fuel += fuel; cur.dryMass += p.mass; }
     } else if (p.kind === "booster") {
       // radial boosters fire with the bottom stage: just more thrust + fuel there
       const s = stages[0];
-      if (s) { s.thrust += p.thrust; s.burn += p.burn; s.fuel += p.fuel; s.dryMass += p.mass; }
+      if (s) { s.thrust += p.thrust; s.burn += p.burn; s.fuel += fuel; s.dryMass += p.mass; }
     } else if (p.kind === "probe") {
       probeMass += p.mass;
     } else if (p.kind === "utility") {
@@ -95,7 +100,7 @@ function renderBuild() {
       e.dataTransfer.setData("text/plain", id);
       e.dataTransfer.effectAllowed = "copy";
     });
-    b.onclick = () => { build.push(id); renderBuild(); }; // click = quick-add on top
+    b.onclick = () => { build.push(makeItem(id)); renderBuild(); }; // click = quick-add on top
     pal.appendChild(b);
   }
 
@@ -106,14 +111,14 @@ function renderBuild() {
   } else {
     const coreIdx = [];
     const boosterIdx = [];
-    build.forEach((id, idx) => (PARTS[id].kind === "booster" ? boosterIdx : coreIdx).push(idx));
+    build.forEach((item, idx) => (PARTS[item.id].kind === "booster" ? boosterIdx : coreIdx).push(idx));
 
     // core stacks vertically, top-first (build[0] is the bottom engine)
     [...coreIdx].reverse().forEach((idx) => {
       const el = document.createElement("div");
       el.className = "rpart";
-      el.title = `${PARTS[build[idx]].name} — click to remove`;
-      el.innerHTML = partArt(build[idx]);
+      el.title = `${PARTS[build[idx].id].name} — click to remove`;
+      el.innerHTML = partArt(build[idx].id);
       el.onclick = () => { build.splice(idx, 1); renderBuild(); };
       stack.appendChild(el);
     });
@@ -124,13 +129,45 @@ function renderBuild() {
       el.className = "booster-side";
       el.style[i % 2 === 0 ? "left" : "right"] = "calc(50% - 68px)";
       el.style.bottom = `${44 + Math.floor(i / 2) * 44}px`;
-      el.title = `${PARTS[build[idx]].name} — click to remove`;
-      el.innerHTML = partArt(build[idx]);
+      el.title = `${PARTS[build[idx].id].name} — click to remove`;
+      el.innerHTML = partArt(build[idx].id);
       el.onclick = () => { build.splice(idx, 1); renderBuild(); };
       stack.appendChild(el);
     });
   }
 
+  renderFuelLoadout();
+  updateBuildStats();
+}
+
+// A slider per fuel-holding part (tank/booster) to set how much fuel it carries.
+function renderFuelLoadout() {
+  const fl = $("fuelLoadout");
+  fl.innerHTML = "";
+  const fuelItems = build.map((item, idx) => ({ item, idx })).filter(({ item }) => PARTS[item.id].fuel != null);
+  if (!fuelItems.length) return;
+  fl.innerHTML = `<div class="fuel-title">Fuel loadout</div>`;
+  fuelItems.forEach(({ item }) => {
+    const p = PARTS[item.id];
+    const row = document.createElement("div");
+    row.className = "fuel-row";
+    row.innerHTML =
+      `<span class="fuel-name">${p.icon} ${p.name}</span>` +
+      `<input type="range" min="0" max="${p.fuel}" step="${Math.max(1, Math.round(p.fuel / 20))}" value="${item.fuel}" />` +
+      `<span class="fuel-val">${item.fuel.toLocaleString()} kg</span>`;
+    const slider = row.querySelector("input");
+    const val = row.querySelector(".fuel-val");
+    slider.addEventListener("input", () => {
+      item.fuel = Number(slider.value);
+      val.textContent = item.fuel.toLocaleString() + " kg";
+      updateBuildStats(); // live weight/TWR feedback without rebuilding the sliders
+    });
+    fl.appendChild(row);
+  });
+}
+
+// Recompute the weight-vs-propulsion readout + validation from the current build.
+function updateBuildStats() {
   const rocket = normalizeRocket(build);
   const totalFuel = rocket.stages.reduce((n, s) => n + s.fuel, 0);
   const mass = rocket.probeMass + rocket.fairingMass + rocket.stages.reduce((n, s) => n + s.dryMass + s.fuel, 0);
@@ -229,17 +266,17 @@ function buildRocketImage(ids) {
 }
 
 // Which build parts are still attached: drops shed stages and a jettisoned fairing.
-function visibleParts(ids, stageIndex, fairingGone) {
+function visibleParts(items, stageIndex, fairingGone) {
   let stage = -1;
   const keep = [];
-  for (const id of ids) {
-    const p = PARTS[id];
+  for (const it of items) {
+    const p = PARTS[it.id];
     if (!p) continue;
-    if (p.kind === "engine") { stage++; if (stage >= stageIndex) keep.push(id); }
-    else if (p.kind === "tank") { if (stage >= stageIndex) keep.push(id); }
-    else if (p.kind === "booster") { if (stageIndex <= 0) keep.push(id); }
-    else if (p.kind === "fairing") { if (!fairingGone) keep.push(id); }
-    else keep.push(id); // probe / utility ride all the way up
+    if (p.kind === "engine") { stage++; if (stage >= stageIndex) keep.push(it.id); }
+    else if (p.kind === "tank") { if (stage >= stageIndex) keep.push(it.id); }
+    else if (p.kind === "booster") { if (stageIndex <= 0) keep.push(it.id); }
+    else if (p.kind === "fairing") { if (!fairingGone) keep.push(it.id); }
+    else keep.push(it.id); // probe / utility ride all the way up
   }
   return keep;
 }
@@ -248,7 +285,7 @@ function idleScene() {
   resetEffects();
   const rocket = normalizeRocket(build);
   const s = initState(rocket);
-  rocketImg = buildRocketImage(build);
+  rocketImg = buildRocketImage(buildIds());
   const paint = () => drawScene(ctx, s, rocket, CONFIG, 0, rocketImg);
   if (rocketImg && !rocketImg.complete) rocketImg.onload = paint;
   paint();
@@ -379,9 +416,9 @@ function beginFlight(rocket) {
   postFrames = -1;
   orbitAwarded = false;
   resetEffects();
-  rocketImg = buildRocketImage(build);
+  rocketImg = buildRocketImage(buildIds());
   renderChecklist(0);
-  setHardEnabled(mode === "hard");
+  setHardEnabled(mode === "manual");
   $("abortBtn").disabled = false;
   paused = false;
   $("pauseBtn").disabled = false;
@@ -557,15 +594,15 @@ stackEl.addEventListener("drop", (e) => {
   const id = e.dataTransfer.getData("text/plain");
   if (!PARTS[id]) return;
   const v = dropIndexFromY(stackEl, e.clientY);
-  build.splice(build.length - v, 0, id); // convert visual slot to build index
+  build.splice(build.length - v, 0, makeItem(id)); // convert visual slot to build index
   renderBuild();
 });
 
 document.querySelectorAll('input[name="mode"]').forEach((r) =>
   r.addEventListener("change", (e) => {
     mode = e.target.value;
-    $("hardControls").hidden = mode !== "hard";
-    if (mode === "hard" && anim) setHardEnabled(true);
+    $("hardControls").hidden = mode !== "manual";
+    if (mode === "manual" && anim) setHardEnabled(true);
   })
 );
 

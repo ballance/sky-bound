@@ -122,6 +122,12 @@ h2 { margin: 0 0 8px; font-size: 19px; }
 .twr-good { color: var(--go); }
 .twr-mid { color: var(--warn); }
 .twr-bad { color: var(--bad); }
+.fuel-loadout { margin-top: 12px; }
+.fuel-title { font-size: 12px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+.fuel-row { display: grid; grid-template-columns: 1fr 110px 66px; align-items: center; gap: 10px; margin: 5px 0; font-size: 13px; }
+.fuel-row input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+.fuel-name { color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fuel-val { color: var(--ink); font-variant-numeric: tabular-nums; text-align: right; }
 
 .plan-list { line-height: 1.9; padding-left: 20px; }
 .check { display: block; margin-top: 14px; color: var(--ink); cursor: pointer; }

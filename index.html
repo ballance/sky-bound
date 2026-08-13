@@ -76,6 +76,7 @@
           <h2>Your Rocket</h2>
           <div id="stack" class="stack"></div>
           <div id="rocketStats" class="stats"></div>
+          <div id="fuelLoadout" class="fuel-loadout"></div>
           <p id="buildWarn" class="warn"></p>
         </div>
       </div>
@@ -98,10 +99,9 @@
           <canvas id="sky" width="560" height="720"></canvas>
         </div>
         <div class="panel hud">
-          <!-- Hard Mode hidden for now; flights run in Auto -->
-          <div class="mode" hidden>
-            <label><input type="radio" name="mode" value="auto" checked /> Auto</label>
-            <label><input type="radio" name="mode" value="hard" /> Hard Mode</label>
+          <div class="mode">
+            <label><input type="radio" name="mode" value="auto" checked /> ⚙️ Auto</label>
+            <label><input type="radio" name="mode" value="manual" /> 🕹️ Manual</label>
           </div>
           <div class="clock" id="clock">T+ 00:00</div>
           <div class="callout" id="callout" aria-live="polite"></div>
