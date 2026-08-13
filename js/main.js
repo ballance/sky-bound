@@ -314,15 +314,15 @@ function runCountdown(rocket) {
     { name: "Booster", reply: "Go, flight!" },
     { name: "Guidance", reply: "Guidance is go!" },
     { name: "Propulsion", reply: "Propulsion, go!" },
-    { name: "FIDO", reply: "Fido is go!" },
-    { name: "EECOM", reply: "Go, flight!" },
+    { name: "FIDO", say: "Fido", reply: "Fido is go!" },
+    { name: "EECOM", say: "E com", reply: "Go, flight!" },
     { name: "Range Safety", reply: "Range is go!" },
   ];
   let sec = 47;
-  for (const { name, reply } of poll) {
+  for (const { name, say, reply } of poll) {
     const q = sec;
     const r = sec - 1;
-    at(q, () => dir(`${name}?`, `Flight Director: ${name}?`));
+    at(q, () => dir(`${say ?? name}?`, `Flight Director: ${name}?`));
     at(r, () => {
       const el = $("callout");
       el.textContent = `${name.toUpperCase()}: ${reply}`;

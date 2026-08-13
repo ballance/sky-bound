@@ -187,57 +187,58 @@ function drawMoon(ctx, w, h, t) {
 function drawPad(ctx, w, y) {
   const cx = w / 2;
 
-  // water tower (far left): big sphere on legs with a readable SkyBound label
-  const wx = cx - 158;
+  // water tower (far left): sphere on braced legs with a readable SkyBound label
+  const wx = cx - 168;
+  const wtop = y - 112; // sphere centre
   ctx.strokeStyle = "#c8ccd4";
   ctx.lineWidth = 2.5;
-  ctx.beginPath(); ctx.moveTo(wx - 15, y); ctx.lineTo(wx - 4, y - 96); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(wx + 15, y); ctx.lineTo(wx + 4, y - 96); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(wx - 10, y - 40); ctx.lineTo(wx + 10, y - 40); ctx.stroke(); // cross-brace
+  ctx.beginPath(); ctx.moveTo(wx - 16, y); ctx.lineTo(wx - 4, wtop + 14); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(wx + 16, y); ctx.lineTo(wx + 4, wtop + 14); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(wx - 11, y - 46); ctx.lineTo(wx + 11, y - 46); ctx.stroke(); // cross-brace
   ctx.fillStyle = "#eef1f7";
-  ctx.beginPath(); ctx.arc(wx, y - 108, 22, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(wx, wtop, 25, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = "#5a6270";
-  ctx.font = "bold 9px system-ui, sans-serif";
+  ctx.font = "bold 7.5px system-ui, sans-serif"; // sits inside the sphere with margin
   ctx.textAlign = "center";
-  ctx.fillText("SkyBound", wx, y - 105);
+  ctx.fillText("SkyBound", wx, wtop + 2.5);
 
   // lightning mast (far right): tall mast with guy wires
-  const lx = cx + 150;
+  const lx = cx + 172;
   ctx.fillStyle = "#cfd3db";
-  ctx.fillRect(lx - 1.5, y - 120, 3, 120);
+  ctx.fillRect(lx - 2, y - 158, 4, 158);
   ctx.strokeStyle = "#9aa2ad";
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(lx, y - 118); ctx.lineTo(lx - 16, y); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(lx, y - 118); ctx.lineTo(lx + 16, y); ctx.stroke();
+  ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(lx, y - 154); ctx.lineTo(lx - 22, y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(lx, y - 154); ctx.lineTo(lx + 22, y); ctx.stroke();
 
   // concrete pad deck + flame trench under the rocket
   ctx.fillStyle = "#9a9488";
-  ctx.fillRect(cx - 92, y - 7, 184, 13);
+  ctx.fillRect(cx - 120, y - 9, 240, 16);
   ctx.fillStyle = "#6f6a60";
-  ctx.fillRect(cx - 92, y - 7, 184, 3);
+  ctx.fillRect(cx - 120, y - 9, 240, 4);
   ctx.fillStyle = "#17171b";
-  ctx.fillRect(cx - 17, y - 5, 34, 11); // trench opening
+  ctx.fillRect(cx - 23, y - 6, 46, 13); // trench opening
 
   // Fixed Service Structure — dark steel lattice tower, left of the rocket
-  const tx = cx - 66;
-  const tw = 26;
-  const tTop = y - 172;
+  const tx = cx - 98;
+  const tw = 40;
+  const tTop = y - 214;
   ctx.fillStyle = "#2b2b30";
   ctx.fillRect(tx, tTop, tw, y - tTop);
   ctx.strokeStyle = "#474751";
-  ctx.lineWidth = 1;
-  for (let yy = tTop + 6; yy < y - 2; yy += 12) {
-    ctx.beginPath(); ctx.moveTo(tx, yy); ctx.lineTo(tx + tw, yy + 8); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(tx + tw, yy); ctx.lineTo(tx, yy + 8); ctx.stroke();
+  ctx.lineWidth = 1.2;
+  for (let yy = tTop + 8; yy < y - 2; yy += 16) {
+    ctx.beginPath(); ctx.moveTo(tx, yy); ctx.lineTo(tx + tw, yy + 11); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(tx + tw, yy); ctx.lineTo(tx, yy + 11); ctx.stroke();
   }
   ctx.fillStyle = "#3a3a41"; // top platform
-  ctx.fillRect(tx - 4, tTop, tw + 8, 8);
+  ctx.fillRect(tx - 6, tTop, tw + 12, 11);
   ctx.fillStyle = "#d8dbe2"; // hammerhead lightning mast
-  ctx.fillRect(tx + tw / 2 - 1.5, tTop - 48, 3, 48);
+  ctx.fillRect(tx + tw / 2 - 2, tTop - 60, 4, 60);
 
   // Crew Access Arm — white beam reaching from the tower to the rocket
   ctx.fillStyle = "#e9edf5";
-  ctx.fillRect(tx + tw, y - 122, cx - 12 - (tx + tw), 7);
+  ctx.fillRect(tx + tw, y - 150, cx - 14 - (tx + tw), 9);
 }
 
 export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0, rocketImg = null) {
@@ -286,7 +287,7 @@ export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0, rocketImg
 
   // --- ground + KSC Pad 39A (structures poke above the ground line) ---
   const groundY = h - GROUND_H + camShift;
-  if (groundY < h + 220) {
+  if (groundY < h + 320) {
     if (groundY < h) {
       ctx.fillStyle = "#3f6b2f"; // Florida scrub
       ctx.fillRect(0, groundY, w, h - groundY);

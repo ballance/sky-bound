@@ -127,16 +127,9 @@ h2 { margin: 0 0 8px; font-size: 19px; }
 .hud .mode { display: flex; gap: 16px; margin-bottom: 12px; }
 .hud .mode[hidden] { display: none; }
 .clock { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: 1px; }
-.callout {
-  position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
-  max-width: 88%; text-align: center; pointer-events: none;
-  padding: 8px 18px; border-radius: 10px;
-  background: rgba(5, 8, 20, 0.86);
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
-  font-size: 17px; font-style: italic; color: var(--dim);
-}
+.callout { margin: 6px 0 12px; min-height: 21px; font-size: 15px; font-style: italic; line-height: 1.4; color: var(--dim); }
 .callout:empty { display: none; }
-.callout.flight { color: #eaf0ff; font-style: normal; font-weight: 700; }
+.callout.flight { color: #eaf0ff; font-style: normal; font-weight: 600; }
 .callout.lead { color: var(--go); font-style: normal; font-weight: 600; }
 .callout.announcer { color: var(--warn); }
 .telemetry { display: grid; gap: 8px; margin: 14px 0; }
