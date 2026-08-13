@@ -2,6 +2,7 @@
   "name": "skybound",
   "version": "0.1.0",
   "description": "A rocket assembly and space-flight simulator for kids.",
+  "author": "Sebastian Ballance <bash@ballance.it> (https://www.linkedin.com/in/sebastian-ballance-49b835281/)",
   "type": "module",
   "scripts": {
     "test": "node js/sim.test.js",
