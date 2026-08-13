@@ -4,7 +4,7 @@
 export const MILESTONES = [
   { id: "alt10k", name: "First to 10 km", reward: 5, check: (s) => s.maxAlt >= 10_000 },
   { id: "space", name: "First to Space (100 km)", reward: 10, check: (s) => s.maxAlt >= 100_000 },
-  { id: "orbit", name: "First Orbit", reward: 20, check: (s) => s.status === "orbit" },
+  { id: "orbit", name: "First Orbit", reward: 20, check: (s) => s.orbited },
   { id: "deploy", name: "First Satellite Deployed", reward: 10, check: (s) => s.deployed },
   { id: "fairing", name: "First Fairing Separation", reward: 8, check: (s) => s.fairingJettisoned },
   { id: "landing", name: "First Booster Landing", reward: 15, check: (s) => s.status === "landed" },
@@ -23,7 +23,7 @@ export const MISSIONS = [
     name: "Put a Satellite in Orbit",
     blurb: "Reach orbit and release your probe as a satellite.",
     reward: 15,
-    check: (s) => s.status === "orbit" && s.deployed,
+    check: (s) => s.orbited && s.deployed,
   },
   {
     id: "landBooster",

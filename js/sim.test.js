@@ -34,7 +34,7 @@ function profile(rocket, plan) {
   let prevFireT = 0;
   let t1km = null;
   const at = {};
-  while (s.status === "flying" && s.t < 3000) {
+  while (s.status === "flying" && !s.orbited && s.t < 3000) {
     while (i < plan.length && triggerReady(plan[i].trigger, s, prevFireT)) {
       applyAction(s, plan[i].action, rocket);
       prevFireT = s.t;
@@ -57,16 +57,16 @@ console.log(
     `alt @3s ${(p.at[3] || 0).toFixed(0)}m @6s ${(p.at[6] || 0).toFixed(0)}m @10s ${(p.at[10] || 0).toFixed(0)}m`
 );
 console.log(
-  `result ${p.final.status} at T+${p.final.t.toFixed(0)}s (real ~${(p.final.t / CONFIG.TIME_SCALE).toFixed(0)}s) · ` +
+  `result ${p.final.orbited ? "orbit" : p.final.status} at T+${p.final.t.toFixed(0)}s (real ~${(p.final.t / CONFIG.TIME_SCALE).toFixed(0)}s) · ` +
     `maxAlt ${(p.final.maxAlt / 1000).toFixed(0)}km · hSpeed ${p.final.maxHSpeed.toFixed(0)}`
 );
 
-assert.equal(p.final.status, "orbit", `expected orbit, got ${p.final.status}`);
+assert.ok(p.final.orbited, "expected the rocket to reach orbit");
 assert(twr < 3.2, `liftoff TWR ${twr.toFixed(2)} too high — should lift off slowly like a real rocket`);
 assert(p.t1km != null && p.t1km >= 4, `cleared 1km in ${p.t1km}s — still leaping off the pad`);
 
 // no fuel: an engine with no tank can never thrust, so it can never orbit
 const weak = normalize(["smallEngine", "probe"]);
-assert.notEqual(simulate(weak, goodPlan, CONFIG).status, "orbit", "a rocket with no fuel must not reach orbit");
+assert.ok(!simulate(weak, goodPlan, CONFIG).orbited, "a rocket with no fuel must not reach orbit");
 
 console.log("ok — orbit reached, liftoff is gradual, a fuel-less rocket falls short");

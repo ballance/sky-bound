@@ -31,6 +31,7 @@ export function initState(rocket) {
     status: "ready", // ready | flying | orbit | landed | crashed
     deployed: false,
     fairingJettisoned: false,
+    orbited: false,
     maxAlt: 0,
     maxHSpeed: 0,
     xDist: 0, // horizontal distance travelled, for star parallax
@@ -66,7 +67,9 @@ export function step(state, dt, cfg = CONFIG, rocket) {
 
   const mass = currentMass(state, rocket);
   const p = pitch(state.altitude, cfg);
-  const aUp = (F * Math.cos(p)) / mass - gravity(state.altitude, cfg);
+  // once in orbit the rocket coasts — no gravity loss, it just keeps circling
+  const g = state.orbited ? 0 : gravity(state.altitude, cfg);
+  const aUp = (F * Math.cos(p)) / mass - g;
   const aH = (F * Math.sin(p)) / mass;
 
   state.vSpeed += aUp * dt;
@@ -90,9 +93,11 @@ export function step(state, dt, cfg = CONFIG, rocket) {
     if (state.status !== "flying") return state;
   }
 
-  // orbit
-  if (state.altitude >= cfg.ORBIT_ALT && state.hSpeed >= cfg.ORBIT_SPEED) {
-    state.status = "orbit";
+  // orbit: not an end state — the sim keeps running and the rocket coasts.
+  if (!state.orbited && state.altitude >= cfg.ORBIT_ALT && state.hSpeed >= cfg.ORBIT_SPEED) {
+    state.orbited = true;
+    state.engineOn = false; // cut the engine; coast around
+    state.vSpeed = 0; // level off into a stable orbit
   }
   return state;
 }

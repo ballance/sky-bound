@@ -37,12 +37,31 @@ let effects = [];
 let prevStage = 0;
 let prevFairing = false;
 let prevStatus = "ready";
+let deployFrame = null; // frame the satellite was released, for the drift animation
 
 export function resetEffects() {
   effects = [];
   prevStage = 0;
   prevFairing = false;
   prevStatus = "ready";
+  deployFrame = null;
+}
+
+// A released satellite: body, dish, and solar panels that unfold after deploy.
+function drawSatellite(ctx, x, y, age) {
+  const panel = Math.min(age * 0.5, 13); // panels extend over the first ~26 frames
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = "#2b6cd4";
+  ctx.fillRect(-6 - panel, -3, panel, 6);
+  ctx.fillRect(6, -3, panel, 6);
+  ctx.fillStyle = "#c7ccd6";
+  ctx.fillRect(-6, -6, 12, 12);
+  ctx.fillStyle = "#9aa2ad";
+  ctx.beginPath(); ctx.arc(0, -9, 3.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#5a6270";
+  ctx.beginPath(); ctx.arc(0, -9, 1.4, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
 }
 
 function spawnPuff(x, y, n) {
@@ -329,20 +348,21 @@ export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0, rocketImg
   updateEffects();
   drawEffects(ctx);
 
-  // --- deployed satellite drifts near the rocket ---
+  // --- deployed satellite: separates and drifts away, panels unfolding ---
   if (state.deployed) {
-    ctx.save();
-    ctx.translate(w / 2 + 34, rocketY - 6);
-    ctx.font = "18px system-ui";
-    ctx.fillText("🛰️", -9, 6);
-    ctx.restore();
+    if (deployFrame == null) deployFrame = frame;
+    const age = frame - deployFrame;
+    const off = Math.min(age * 0.8, 320);
+    drawSatellite(ctx, w / 2 + 24 + off * 0.7, rocketY - 16 - off * 0.5, age);
+  } else {
+    deployFrame = null;
   }
 
-  // --- big status banner on end states ---
-  if (state.status === "orbit") banner(ctx, w, "🛰️  ORBIT!  🛰️", "#7ef");
-  else if (state.status === "landed") banner(ctx, w, "🪂  SAFE LANDING", "#8f8");
-  else if (state.status === "aborted") banner(ctx, w, "💥  R.U.D.!", "#f88");
+  // --- big status banner ---
+  if (state.status === "aborted") banner(ctx, w, "💥  R.U.D.!", "#f88");
   else if (state.status === "crashed") banner(ctx, w, "💥  CRASH", "#f88");
+  else if (state.orbited) banner(ctx, w, "🛰️  ORBIT!  🛰️", "#7ef");
+  else if (state.status === "landed") banner(ctx, w, "🪂  SAFE LANDING", "#8f8");
 }
 
 // Engine exhaust, drawn from the base (y=0) downward in the rocket's frame.

@@ -217,6 +217,7 @@ let lastThrusting = false;
 let postFrames = -1; // frames to keep animating effects after the flight ends
 let countdownTimers = []; // all scheduled callouts/ticks of the launch sequence
 let paused = false;
+let orbitAwarded = false;
 let loopFn = null; // the flight's rAF callback, so pause/resume can restart it
 
 // Rasterize the assembled build into one image the launch view can draw.
@@ -283,9 +284,13 @@ function startLaunch() {
   if (err) { $("launchResult").textContent = "🚫 " + err; return; }
 
   sfx.resume(); // the click is our gesture to enable audio
+  if (anim) { cancelAnimationFrame(anim); anim = null; } // stop a coasting orbit
+  sfx.setRumble(false);
+  paused = false;
   $("launchResult").textContent = "";
   $("launchBtn").disabled = true;
   $("abortBtn").disabled = true;
+  $("pauseBtn").disabled = true;
   setHardEnabled(false);
   idleScene(); // rocket waits on the pad through the countdown
   runCountdown(rocket, $("quickCountdown").checked ? 10 : 60);
@@ -372,6 +377,7 @@ function beginFlight(rocket) {
   lastDeployed = false;
   lastThrusting = false;
   postFrames = -1;
+  orbitAwarded = false;
   resetEffects();
   rocketImg = buildRocketImage(build);
   renderChecklist(0);
@@ -422,17 +428,24 @@ function beginFlight(rocket) {
       lastFairing = sim.fairingJettisoned;
       rocketImg = buildRocketImage(visibleParts(build, sim.stageIndex, sim.fairingJettisoned));
     }
+    // reached orbit: announce + award once, but the sim keeps coasting around
+    if (sim.orbited && !orbitAwarded) {
+      orbitAwarded = true;
+      sfx.orbit();
+      awardResults(sim);
+      $("launchBtn").disabled = false; // free to fly again while it orbits
+      const c = $("callout"); c.textContent = ""; c.className = "callout";
+    }
     frame++;
     drawScene(ctx, sim, rocketNow, CONFIG, frame, rocketImg);
     updateHUD();
     if (sim.status === "flying") {
-      anim = requestAnimationFrame(loop);
+      anim = requestAnimationFrame(loop); // orbiting counts as flying — keep going
     } else {
-      // let the ending play out (big tail for explosions, short for clean ends)
+      // ending tail: explosion for crash/abort, short for a clean landing
       if (postFrames < 0) {
         postFrames = sim.status === "crashed" || sim.status === "aborted" ? 80 : 6;
-        if (sim.status === "orbit") sfx.orbit();
-        else if (sim.status === "landed") sfx.deploy();
+        if (sim.status === "landed") sfx.deploy();
         else sfx.boom();
       }
       if (postFrames > 0) { postFrames--; anim = requestAnimationFrame(loop); }
@@ -459,19 +472,9 @@ function resumeFlight() {
   if (loopFn) anim = requestAnimationFrame(loopFn);
 }
 
-function finishFlight(finalState) {
-  cancelAnimationFrame(anim);
-  anim = null;
-  lastThrusting = false;
-  paused = false;
-  sfx.setRumble(false);
-  setHardEnabled(false);
-  $("launchBtn").disabled = false;
-  $("abortBtn").disabled = true;
-  $("pauseBtn").disabled = true;
-  $("pauseBtn").textContent = "⏸ Pause";
-  { const c = $("callout"); c.textContent = ""; c.className = "callout"; }
-
+// Tally milestones/missions and show the outcome. Idempotent (milestones only
+// award once), so it's safe to call on orbit and again if the flight later ends.
+function awardResults(finalState) {
   const earned = [];
   for (const m of MILESTONES) {
     if (!game.milestonesEarned.includes(m.id) && m.check(finalState)) {
@@ -491,14 +494,31 @@ function finishFlight(finalState) {
   $("kbal").textContent = game.knowledge;
 
   const head =
-    finalState.status === "orbit" ? "🛰️ You reached ORBIT!" :
-    finalState.status === "landed" ? "🪂 Safe landing!" :
     finalState.status === "aborted" ? "💥 Rapid Unscheduled Disassembly! (You hit ABORT.)" :
     finalState.status === "crashed" ? "💥 Crashed — try more fuel or a parachute." :
+    finalState.orbited ? "🛰️ You reached ORBIT! Coasting around…" :
+    finalState.status === "landed" ? "🪂 Safe landing!" :
     "Flight over.";
-  $("launchResult").textContent = [head, ...earned].join("\n");
+  const prev = $("launchResult").textContent;
+  const text = [head, ...earned].join("\n");
+  if (text !== prev) $("launchResult").textContent = text;
   renderKnowledge();
   renderMissions();
+}
+
+function finishFlight(finalState) {
+  cancelAnimationFrame(anim);
+  anim = null;
+  lastThrusting = false;
+  paused = false;
+  sfx.setRumble(false);
+  setHardEnabled(false);
+  $("launchBtn").disabled = false;
+  $("abortBtn").disabled = true;
+  $("pauseBtn").disabled = true;
+  $("pauseBtn").textContent = "⏸ Pause";
+  { const c = $("callout"); c.textContent = ""; c.className = "callout"; }
+  awardResults(finalState);
 }
 
 function setHardEnabled(on) {
