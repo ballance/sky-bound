@@ -53,6 +53,9 @@ function validate(rocket) {
   if (rocket.stages.length === 0) return "Add an engine so your rocket can fly.";
   if (rocket.probeMass === 0) return "Add a Probe — the rocket needs a brain.";
   if (rocket.stages.some((s) => s.fuel === 0)) return "Every engine needs a Fuel Tank above it.";
+  const mass = rocket.probeMass + (rocket.fairingMass || 0) + rocket.stages.reduce((n, s) => n + s.dryMass + s.fuel, 0);
+  if (rocket.stages[0].thrust < mass * CONFIG.GRAVITY0)
+    return "Too heavy to lift off — add an engine or booster, or remove a tank.";
   return "";
 }
 
@@ -131,9 +134,16 @@ function renderBuild() {
   const rocket = normalizeRocket(build);
   const totalFuel = rocket.stages.reduce((n, s) => n + s.fuel, 0);
   const mass = rocket.probeMass + rocket.fairingMass + rocket.stages.reduce((n, s) => n + s.dryMass + s.fuel, 0);
+  // weight vs propulsion: liftoff thrust ÷ weight. Stage-0 thrust already
+  // includes any side boosters (they fold into the bottom stage).
+  const liftThrust = rocket.stages[0] ? rocket.stages[0].thrust : 0;
+  const twr = mass > 0 && liftThrust > 0 ? liftThrust / (mass * CONFIG.GRAVITY0) : 0;
+  const twrClass = twr >= 1.3 ? "good" : twr >= 1 ? "mid" : "bad";
+  const twrLabel = twr >= 1.3 ? "lifts off strong 🚀" : twr >= 1 ? "lifts off slowly" : "too heavy to fly 🚫";
   $("rocketStats").innerHTML =
-    `Stages: <b>${rocket.stages.length}</b> &nbsp;·&nbsp; Fuel: <b>${totalFuel.toLocaleString()}</b> kg ` +
-    `&nbsp;·&nbsp; Liftoff mass: <b>${Math.round(mass).toLocaleString()}</b> kg`;
+    `Stages <b>${rocket.stages.length}</b> &nbsp;·&nbsp; Fuel <b>${totalFuel.toLocaleString()}</b> kg &nbsp;·&nbsp; ` +
+    `Weight <b>${Math.round(mass).toLocaleString()}</b> kg &nbsp;·&nbsp; Thrust <b>${Math.round(liftThrust / 1000).toLocaleString()}</b> kN` +
+    `<div class="twr twr-${twrClass}">Thrust ÷ Weight = <b>${twr.toFixed(2)}</b> — ${twrLabel}</div>`;
   $("buildWarn").textContent = validate(rocket);
 }
 
@@ -206,6 +216,8 @@ let lastDeployed = false;
 let lastThrusting = false;
 let postFrames = -1; // frames to keep animating effects after the flight ends
 let countdownTimers = []; // all scheduled callouts/ticks of the launch sequence
+let paused = false;
+let loopFn = null; // the flight's rAF callback, so pause/resume can restart it
 
 // Rasterize the assembled build into one image the launch view can draw.
 function buildRocketImage(ids) {
@@ -276,7 +288,7 @@ function startLaunch() {
   $("abortBtn").disabled = true;
   setHardEnabled(false);
   idleScene(); // rocket waits on the pad through the countdown
-  runCountdown(rocket);
+  runCountdown(rocket, $("quickCountdown").checked ? 10 : 60);
 }
 
 function clearCountdown() {
@@ -289,16 +301,18 @@ function clearCountdown() {
 
 // A real-time T-60 launch sequence: flight director go/no-go poll, then the
 // terminal count. Each callout is a scheduled speech line; the clock ticks 1/s.
-function runCountdown(rocket) {
+function runCountdown(rocket, fromSec = 60) {
   clearCountdown();
-  // schedule fn at the given T-minus second (real-time: 1s per second)
-  const at = (sec, fn) => countdownTimers.push(setTimeout(fn, (60 - sec) * 1000));
+  // schedule fn at the given T-minus second (real-time), if it falls in the window
+  const at = (sec, fn) => {
+    if (sec <= fromSec) countdownTimers.push(setTimeout(fn, (fromSec - sec) * 1000));
+  };
   // show the line on screen (with a speaker style) AND speak it
   const show = (caption, cls) => { const el = $("callout"); el.textContent = caption; el.className = "callout " + cls; };
   const dir = (spoken, caption) => { show(caption ?? `Flight Director: ${spoken}`, "flight"); sfx.speak(spoken, { pitch: 0.66, rate: 0.95 }); };
   const call = (spoken, caption) => { show(caption ?? spoken, "announcer"); sfx.speak(spoken, { pitch: 0.72, rate: 1.0 }); };
 
-  for (let s = 60; s >= 0; s--) {
+  for (let s = fromSec; s >= 0; s--) {
     at(s, () => {
       $("clock").textContent = s > 0 ? `T- 00:${String(s).padStart(2, "0")}` : "T+ 00:00";
       if (s <= 10 && s >= 1) sfx.beep();
@@ -363,6 +377,9 @@ function beginFlight(rocket) {
   renderChecklist(0);
   setHardEnabled(mode === "hard");
   $("abortBtn").disabled = false;
+  paused = false;
+  $("pauseBtn").disabled = false;
+  $("pauseBtn").textContent = "⏸ Pause";
   sfx.liftoff();
 
   // Fire every plan step whose trigger is now satisfied (auto mode only).
@@ -422,17 +439,37 @@ function beginFlight(rocket) {
       else finishFlight(sim);
     }
   };
+  loopFn = loop;
   anim = requestAnimationFrame(loop);
+}
+
+// Pause/resume the flight. The loop clamps dt, so a stale timestamp on resume
+// costs at most one small step — no need to track elapsed paused time.
+function pauseFlight() {
+  if (anim) { cancelAnimationFrame(anim); anim = null; }
+  paused = true;
+  sfx.setRumble(false);
+  $("pauseBtn").textContent = "▶ Resume";
+}
+function resumeFlight() {
+  if (!paused) return;
+  paused = false;
+  $("pauseBtn").textContent = "⏸ Pause";
+  if (lastThrusting) sfx.setRumble(true);
+  if (loopFn) anim = requestAnimationFrame(loopFn);
 }
 
 function finishFlight(finalState) {
   cancelAnimationFrame(anim);
   anim = null;
   lastThrusting = false;
+  paused = false;
   sfx.setRumble(false);
   setHardEnabled(false);
   $("launchBtn").disabled = false;
   $("abortBtn").disabled = true;
+  $("pauseBtn").disabled = true;
+  $("pauseBtn").textContent = "⏸ Pause";
   { const c = $("callout"); c.textContent = ""; c.className = "callout"; }
 
   const earned = [];
@@ -475,7 +512,7 @@ function show(screen) {
   if (screen === "plan") renderPlan();
   if (screen === "knowledge") renderKnowledge();
   if (screen === "missions") renderMissions();
-  if (screen === "launch") { if (!anim) idleScene(); }
+  if (screen === "launch") { if (!anim && !paused) idleScene(); }
 }
 
 $("musicToggle").addEventListener("click", () => {
@@ -519,11 +556,17 @@ $("hardControls").addEventListener("click", (e) => {
 });
 
 $("launchBtn").addEventListener("click", startLaunch);
+$("pauseBtn").addEventListener("click", () => {
+  if (!sim || sim.status !== "flying") return; // pause only mid-flight
+  if (paused) resumeFlight();
+  else pauseFlight();
+});
 $("abortBtn").addEventListener("click", () => {
   // Rapid Unscheduled Disassembly — the loop handles the explosion + ending.
   if (sim && sim.status === "flying") {
     sim.status = "aborted";
     sim.engineOn = false;
+    if (paused) resumeFlight(); // let the loop run to play the explosion
   }
 });
 $("resetBtn").addEventListener("click", () => {
@@ -531,6 +574,7 @@ $("resetBtn").addEventListener("click", () => {
   clearCountdown();
   sfx.setRumble(false);
   lastThrusting = false;
+  paused = false;
   sim = null;
   $("launchResult").textContent = "";
   $("clock").textContent = "T+ 00:00";
@@ -538,6 +582,8 @@ $("resetBtn").addEventListener("click", () => {
   setHardEnabled(false);
   $("launchBtn").disabled = false;
   $("abortBtn").disabled = true;
+  $("pauseBtn").disabled = true;
+  $("pauseBtn").textContent = "⏸ Pause";
   idleScene();
 });
 
