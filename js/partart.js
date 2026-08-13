@@ -105,20 +105,34 @@ function aeroShell(coreH) {
   );
 }
 
+// A payload fairing: an opaque bulbous nose shroud that ENCLOSES the top
+// payload slot (the satellite rides inside, hidden until jettison).
+function fairingShroud() {
+  return (
+    `<path d="M20 0 C 32 6, 37 16, 37 28 L 37 56 L 3 56 L 3 28 C 3 16, 8 6, 20 0 Z" fill="#eef1f7"/>` +
+    `<path d="M20 0 C 26 6, 28 16, 28 28 L 28 56 L 20 56 Z" fill="#e0e5ee"/>` +
+    `<line x1="20" y1="3" x2="20" y2="56" stroke="#c2c8d2" stroke-width="1"/>` +
+    `<line x1="3" y1="55" x2="37" y2="55" stroke="#cfd4de" stroke-width="1.5"/>`
+  );
+}
+
 // Compose stacked part ids (bottom-first, as stored in `build`) into ONE rocket
 // SVG matching the build. Side boosters attach radially to the core's base.
 const STACK_STEP = 48; // vertical units per part (56 tall, ~8 overlap)
 export function rocketSVG(ids) {
   if (!ids.length) return "";
-  const isBooster = (id) => (PARTS[id] || {}).kind === "booster";
-  const coreIds = ids.filter((id) => !isBooster(id));
-  const boosters = ids.filter(isBooster).length;
+  const kindOf = (id) => (PARTS[id] || {}).kind;
+  const boosters = ids.filter((id) => kindOf(id) === "booster").length;
+  const hasFairing = ids.some((id) => kindOf(id) === "fairing");
+  // the fairing is the opaque nose shroud over the payload, not a stacked slot
+  const stackIds = ids.filter((id) => kindOf(id) !== "booster" && kindOf(id) !== "fairing");
 
-  const topFirst = [...coreIds].reverse();
+  const topFirst = [...stackIds].reverse();
   const coreH = 56 + STACK_STEP * (Math.max(1, topFirst.length) - 1);
   const core =
     topFirst.map((id, i) => `<g transform="translate(0,${i * STACK_STEP})">${inner(id)}</g>`).join("") +
-    aeroShell(coreH); // sleek translucent skin over the internals
+    aeroShell(coreH) + // translucent skin over the body internals
+    (hasFairing ? fairingShroud() : ""); // opaque fairing (the nose cone) hides the payload
 
   if (!boosters) {
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 ${coreH}" width="40" height="${coreH}">${AERO_DEFS}${core}</svg>`;
