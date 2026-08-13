@@ -33,6 +33,7 @@ export function initState(rocket) {
     fairingJettisoned: false,
     maxAlt: 0,
     maxHSpeed: 0,
+    xDist: 0, // horizontal distance travelled, for star parallax
   };
 }
 
@@ -71,6 +72,7 @@ export function step(state, dt, cfg = CONFIG, rocket) {
   state.vSpeed += aUp * dt;
   state.hSpeed += aH * dt;
   state.altitude += state.vSpeed * dt;
+  state.xDist += state.hSpeed * dt;
   state.t += dt;
 
   state.maxAlt = Math.max(state.maxAlt, state.altitude);

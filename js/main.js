@@ -283,6 +283,8 @@ function clearCountdown() {
   for (const id of countdownTimers) clearTimeout(id);
   countdownTimers = [];
   sfx.cancelSpeech();
+  const c = document.getElementById("callout");
+  if (c) { c.textContent = ""; c.className = "callout"; }
 }
 
 // A real-time T-60 launch sequence: flight director go/no-go poll, then the
@@ -291,9 +293,10 @@ function runCountdown(rocket) {
   clearCountdown();
   // schedule fn at the given T-minus second (real-time: 1s per second)
   const at = (sec, fn) => countdownTimers.push(setTimeout(fn, (60 - sec) * 1000));
-  const dir = (t) => sfx.speak(t, { pitch: 0.66, rate: 0.95 }); // flight director
-  const lead = (t) => sfx.speak(t, { pitch: 0.92, rate: 1.12 }); // a system lead's reply
-  const call = (t) => sfx.speak(t, { pitch: 0.72, rate: 1.0 }); // launch announcer
+  // show the line on screen (with a speaker style) AND speak it
+  const show = (caption, cls) => { const el = $("callout"); el.textContent = caption; el.className = "callout " + cls; };
+  const dir = (spoken, caption) => { show(caption ?? `Flight Director: ${spoken}`, "flight"); sfx.speak(spoken, { pitch: 0.66, rate: 0.95 }); };
+  const call = (spoken, caption) => { show(caption ?? spoken, "announcer"); sfx.speak(spoken, { pitch: 0.72, rate: 1.0 }); };
 
   for (let s = 60; s >= 0; s--) {
     at(s, () => {
@@ -302,26 +305,44 @@ function runCountdown(rocket) {
     });
   }
 
-  at(60, () => dir("T minus sixty seconds and counting."));
-  at(52, () => dir("All stations, this is the flight director. Stand by for go, no go for launch."));
-  at(47, () => dir("Booster?")); at(46, () => lead("Go, flight!"));
-  at(45, () => dir("Guidance?")); at(44, () => lead("Guidance is go!"));
-  at(43, () => dir("Propulsion?")); at(42, () => lead("Propulsion, go!"));
-  at(41, () => dir("Fido?")); at(40, () => lead("Fido is go!"));
-  at(39, () => dir("Eecom?")); at(38, () => lead("Go, flight!"));
-  at(37, () => dir("Range safety?")); at(36, () => lead("Range is go!"));
-  at(34, () => dir("Copy that. We are go for launch!"));
+  at(60, () => dir("T minus sixty seconds and counting.", "T minus 60 seconds and counting."));
+  at(52, () => dir("All stations, this is the flight director. Stand by for go, no go for launch.",
+    "Flight Director: all stations, stand by for go / no-go for launch."));
+
+  // flight director polls each system lead for a go
+  const poll = [
+    { name: "Booster", reply: "Go, flight!" },
+    { name: "Guidance", reply: "Guidance is go!" },
+    { name: "Propulsion", reply: "Propulsion, go!" },
+    { name: "FIDO", reply: "Fido is go!" },
+    { name: "EECOM", reply: "Go, flight!" },
+    { name: "Range Safety", reply: "Range is go!" },
+  ];
+  let sec = 47;
+  for (const { name, reply } of poll) {
+    const q = sec;
+    const r = sec - 1;
+    at(q, () => dir(`${name}?`, `Flight Director: ${name}?`));
+    at(r, () => {
+      const el = $("callout");
+      el.textContent = `${name.toUpperCase()}: ${reply}`;
+      el.className = "callout lead";
+      sfx.speak(reply, { pitch: 0.92, rate: 1.12 });
+    });
+    sec -= 2;
+  }
+
+  at(34, () => dir("Copy that. We are go for launch!", "Flight Director: we are GO for launch!"));
   at(20, () => call("T minus twenty seconds."));
   at(15, () => call("Guidance is internal."));
-  at(10, () => call("Ten"));
-  at(9, () => call("nine")); at(8, () => call("eight")); at(7, () => call("seven"));
-  at(6, () => call("six. Ignition sequence start."));
+  at(10, () => call("Ten")); at(9, () => call("nine")); at(8, () => call("eight")); at(7, () => call("seven"));
+  at(6, () => call("six. Ignition sequence start.", "Ignition sequence start."));
   at(5, () => call("five")); at(4, () => call("four")); at(3, () => call("three"));
   at(2, () => call("two")); at(1, () => call("one"));
   at(0, () => {
     countdownTimers = [];
     $("clock").textContent = "T+ 00:00";
-    call("Zero. We have liftoff!");
+    call("Zero. We have liftoff!", "🔥 WE HAVE LIFTOFF!");
     beginFlight(rocket);
   });
 }
@@ -412,6 +433,7 @@ function finishFlight(finalState) {
   setHardEnabled(false);
   $("launchBtn").disabled = false;
   $("abortBtn").disabled = true;
+  { const c = $("callout"); c.textContent = ""; c.className = "callout"; }
 
   const earned = [];
   for (const m of MILESTONES) {

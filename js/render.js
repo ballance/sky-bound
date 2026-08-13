@@ -180,6 +180,76 @@ function drawMoon(ctx, w, h, t) {
   ctx.restore();
 }
 
+// Kennedy Space Center Launch Complex 39A, stylized: concrete deck + flame
+// trench, the dark Fixed Service Structure, crew access arm, the leaning
+// transporter-erector, a SPACEX water tower, and lightning masts. Anchored at
+// the ground line `y`, drawn in the fixed 560-wide canvas space.
+function drawPad(ctx, w, y) {
+  const cx = w / 2;
+
+  // water tower (far left): sphere on legs with a SPACEX label
+  const wx = cx - 150;
+  ctx.strokeStyle = "#c8ccd4";
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(wx - 9, y); ctx.lineTo(wx - 2, y - 72); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(wx + 9, y); ctx.lineTo(wx + 2, y - 72); ctx.stroke();
+  ctx.fillStyle = "#eef1f7";
+  ctx.beginPath(); ctx.arc(wx, y - 80, 13, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#8a9099";
+  ctx.font = "bold 5.5px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("SkyBound", wx, y - 78);
+
+  // lightning mast (far right): tall mast with guy wires
+  const lx = cx + 150;
+  ctx.fillStyle = "#cfd3db";
+  ctx.fillRect(lx - 1.5, y - 120, 3, 120);
+  ctx.strokeStyle = "#9aa2ad";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(lx, y - 118); ctx.lineTo(lx - 16, y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(lx, y - 118); ctx.lineTo(lx + 16, y); ctx.stroke();
+
+  // concrete pad deck + flame trench under the rocket
+  ctx.fillStyle = "#9a9488";
+  ctx.fillRect(cx - 92, y - 7, 184, 13);
+  ctx.fillStyle = "#6f6a60";
+  ctx.fillRect(cx - 92, y - 7, 184, 3);
+  ctx.fillStyle = "#17171b";
+  ctx.fillRect(cx - 17, y - 5, 34, 11); // trench opening
+
+  // Fixed Service Structure — dark steel lattice tower, left of the rocket
+  const tx = cx - 66;
+  const tw = 26;
+  const tTop = y - 172;
+  ctx.fillStyle = "#2b2b30";
+  ctx.fillRect(tx, tTop, tw, y - tTop);
+  ctx.strokeStyle = "#474751";
+  ctx.lineWidth = 1;
+  for (let yy = tTop + 6; yy < y - 2; yy += 12) {
+    ctx.beginPath(); ctx.moveTo(tx, yy); ctx.lineTo(tx + tw, yy + 8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(tx + tw, yy); ctx.lineTo(tx, yy + 8); ctx.stroke();
+  }
+  ctx.fillStyle = "#3a3a41"; // top platform
+  ctx.fillRect(tx - 4, tTop, tw + 8, 8);
+  ctx.fillStyle = "#d8dbe2"; // hammerhead lightning mast
+  ctx.fillRect(tx + tw / 2 - 1.5, tTop - 48, 3, 48);
+
+  // Crew Access Arm — white beam reaching from the tower to the rocket
+  ctx.fillStyle = "#e9edf5";
+  ctx.fillRect(tx + tw, y - 122, cx - 12 - (tx + tw), 7);
+
+  // Transporter-Erector (strongback) — white truss leaning back to the right
+  ctx.strokeStyle = "#dfe4ee";
+  ctx.lineWidth = 9;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(cx + 18, y);
+  ctx.lineTo(cx + 78, y - 150);
+  ctx.stroke();
+  ctx.lineWidth = 1;
+  ctx.lineCap = "butt";
+}
+
 export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0, rocketImg = null) {
   const w = ctx.canvas.width;
   const h = ctx.canvas.height;
@@ -205,10 +275,12 @@ export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0, rocketImg
   // --- stars twinkle in and grow brighter as you climb ---
   const fade = Math.min(1, t * 1.5);
   if (fade > 0.02) {
+    // stars drift opposite our sideways travel (parallax) as the rocket pitches over
+    const drift = (state.xDist || 0) * 0.008;
     for (const st of STARS) {
       const a = fade * st.base * (0.55 + 0.45 * Math.sin(frame * st.tw + st.ph));
       ctx.fillStyle = `rgba(${st.col},${a})`;
-      const sx = st.x * w;
+      const sx = (((st.x * w - drift) % w) + w) % w;
       const sy = ((st.y + camShift * 0.00022) % 1) * h;
       ctx.fillRect(sx, sy, st.s, st.s);
       if (st.s > 2) { // faint glint on the big ones
@@ -222,15 +294,16 @@ export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0, rocketImg
   // --- the moon (for Sebastian) ---
   drawMoon(ctx, w, h, t);
 
-  // --- ground + launch pad ---
+  // --- ground + KSC Pad 39A (structures poke above the ground line) ---
   const groundY = h - GROUND_H + camShift;
-  if (groundY < h) {
-    ctx.fillStyle = "#3f6b2f";
-    ctx.fillRect(0, groundY, w, h - groundY);
-    ctx.fillStyle = "#2c4a21";
-    ctx.fillRect(0, groundY, w, 4);
-    ctx.fillStyle = "#555";
-    ctx.fillRect(w / 2 - 26, groundY, 52, 8); // pad
+  if (groundY < h + 220) {
+    if (groundY < h) {
+      ctx.fillStyle = "#3f6b2f"; // Florida scrub
+      ctx.fillRect(0, groundY, w, h - groundY);
+      ctx.fillStyle = "#2c4a21";
+      ctx.fillRect(0, groundY, w, 4);
+    }
+    drawPad(ctx, w, groundY);
   }
 
   // --- the rocket: the actual assembled build, rasterized from its part art ---
@@ -284,13 +357,13 @@ export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0, rocketImg
 // Engine exhaust, drawn from the base (y=0) downward in the rocket's frame.
 function drawFlame(ctx, frame) {
   const flick = 0.7 + 0.3 * Math.sin(frame * 0.9);
-  const len = 22 * flick + (frame % 3);
+  const len = (22 * flick + (frame % 3)) * 3; // 3x longer plume
   ctx.fillStyle = "#ffd24a";
   ctx.beginPath();
-  ctx.moveTo(-8, 0); ctx.lineTo(8, 0); ctx.lineTo(0, len); ctx.closePath(); ctx.fill();
+  ctx.moveTo(-16, 0); ctx.lineTo(16, 0); ctx.lineTo(0, len); ctx.closePath(); ctx.fill();
   ctx.fillStyle = "#ff7a2a";
   ctx.beginPath();
-  ctx.moveTo(-4, 0); ctx.lineTo(4, 0); ctx.lineTo(0, len * 0.6); ctx.closePath(); ctx.fill();
+  ctx.moveTo(-9, 0); ctx.lineTo(9, 0); ctx.lineTo(0, len * 0.6); ctx.closePath(); ctx.fill();
 }
 
 function banner(ctx, w, text, color) {

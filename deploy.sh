@@ -9,7 +9,7 @@ echo "Syncing site to s3://$BUCKET ..."
 # Whitelist just the site files — never upload infra/, docs, tests, or git.
 aws s3 sync . "s3://$BUCKET" \
   --delete \
-  --cache-control "public, max-age=3600" \
+  --cache-control "no-cache" \
   --exclude "*" \
   --include "index.html" \
   --include "css/*" \

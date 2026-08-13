@@ -69,7 +69,7 @@ nav button {
 nav button:hover { color: var(--ink); }
 nav button.active { background: var(--panel2); color: var(--ink); border-color: #33407a; }
 
-main { padding: 20px; max-width: 1000px; margin: 0 auto; }
+main { padding: 20px; max-width: 1200px; margin: 0 auto; }
 .screen { display: none; }
 .screen.active { display: block; }
 
@@ -121,11 +121,24 @@ h2 { margin: 0 0 8px; font-size: 19px; }
 .plan-list { line-height: 1.9; padding-left: 20px; }
 .check { display: block; margin-top: 14px; color: var(--ink); cursor: pointer; }
 
-.launch-grid { display: grid; grid-template-columns: 440px 1fr; gap: 16px; align-items: start; }
-.stage-wrap { background: #05060f; border-radius: 14px; overflow: hidden; border: 1px solid #263056; line-height: 0; }
-#sky { width: 100%; height: auto; display: block; }
+.launch-grid { display: grid; grid-template-columns: 1fr 300px; gap: 16px; align-items: start; }
+.stage-wrap { position: relative; background: #05060f; border-radius: 14px; overflow: hidden; border: 1px solid #263056; width: fit-content; max-width: 100%; justify-self: center; line-height: 0; }
+#sky { display: block; width: auto; height: auto; max-width: 100%; max-height: 82vh; }
 .hud .mode { display: flex; gap: 16px; margin-bottom: 12px; }
+.hud .mode[hidden] { display: none; }
 .clock { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: 1px; }
+.callout {
+  position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+  max-width: 88%; text-align: center; pointer-events: none;
+  padding: 8px 18px; border-radius: 10px;
+  background: rgba(5, 8, 20, 0.86);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+  font-size: 17px; font-style: italic; color: var(--dim);
+}
+.callout:empty { display: none; }
+.callout.flight { color: #eaf0ff; font-style: normal; font-weight: 700; }
+.callout.lead { color: var(--go); font-style: normal; font-weight: 600; }
+.callout.announcer { color: var(--warn); }
 .telemetry { display: grid; gap: 8px; margin: 14px 0; }
 .telemetry > div { display: flex; justify-content: space-between; align-items: center; font-size: 15px; }
 .telemetry span { color: var(--dim); }

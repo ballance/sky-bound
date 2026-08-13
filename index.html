@@ -95,10 +95,12 @@
     <section id="launch" class="screen">
       <div class="launch-grid">
         <div class="stage-wrap">
-          <canvas id="sky" width="440" height="520"></canvas>
+          <canvas id="sky" width="560" height="720"></canvas>
+          <div class="callout" id="callout" aria-live="polite"></div>
         </div>
         <div class="panel hud">
-          <div class="mode">
+          <!-- Hard Mode hidden for now; flights run in Auto -->
+          <div class="mode" hidden>
             <label><input type="radio" name="mode" value="auto" checked /> Auto</label>
             <label><input type="radio" name="mode" value="hard" /> Hard Mode</label>
           </div>
