@@ -21,7 +21,7 @@ export function pitch(alt, cfg = CONFIG) {
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
-// rocket = { stages:[{thrust,burn,dryMass,fuel}], probeMass, hasParachute }
+// rocket = { stages:[{thrust,ve,dryMass,fuel}], probeMass, hasParachute }
 // stages fire bottom (index 0) first.
 export function initState(rocket) {
   return {
@@ -88,6 +88,16 @@ export function step(state, dt, cfg = CONFIG, rocket) {
   state.vSpeed += aUp * dt;
   state.hSpeed += aH * dt;
 
+  // atmospheric drag: F = 0.5 * rho * v^2 * CdA, opposing the velocity vector
+  const rho = cfg.RHO0 * Math.exp(-Math.max(0, state.altitude) / cfg.H_ATM);
+  const spd = Math.hypot(state.vSpeed, state.hSpeed);
+  if (spd > 0.01) {
+    const dragAcc = (0.5 * rho * spd * spd * cfg.CDA) / mass;
+    const k = Math.min(1, (dragAcc / spd) * dt); // fractional velocity removed this step
+    state.vSpeed -= state.vSpeed * k;
+    state.hSpeed -= state.hSpeed * k;
+  }
+
   // re-entry: atmospheric drag bleeds off speed; the parachute adds a lot of it.
   if (state.reentering) {
     if (rocket.hasParachute && !state.chuteOpen && state.altitude < cfg.CHUTE_ALT && state.vSpeed < 0) {
@@ -106,7 +116,7 @@ export function step(state, dt, cfg = CONFIG, rocket) {
 
   // nose-cone temperature: heating from speed through the air, with thermal lag
   const speed = Math.hypot(state.vSpeed, state.hSpeed);
-  const dense = Math.max(0, 1 - state.altitude / cfg.SPACE_ALT);
+  const dense = Math.exp(-Math.max(0, state.altitude) / cfg.H_ATM); // real air-density ratio
   const heatTarget = 15 + dense * speed * speed * 7.5e-4;
   state.noseTemp += (heatTarget - state.noseTemp) * Math.min(1, 0.6 * dt);
 

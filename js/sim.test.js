@@ -85,4 +85,15 @@ import { initState as _initState, step as _step } from "./sim.js";
   assert.ok(Math.abs(got - expected) < 60, `stage dv ${got.toFixed(0)} should be ~${expected.toFixed(0)}`);
 }
 
+// drag: a fast object low in the atmosphere loses horizontal speed to drag
+{
+  const r = { probeMass: 500, hasParachute: false, stages: [{ thrust: 0, ve: 3000, dryMass: 500, fuel: 0 }] };
+  const lo = _initState(r); lo.status = "flying"; lo.altitude = 1000; lo.hSpeed = 2000;
+  _step(lo, 0.1, CONFIG, r);
+  assert.ok(lo.hSpeed < 2000, "drag should slow a fast object in thick air");
+  const hi = _initState(r); hi.status = "flying"; hi.altitude = 200000; hi.hSpeed = 2000;
+  _step(hi, 0.1, CONFIG, r);
+  assert.ok(Math.abs(hi.hSpeed - 2000) < 0.01, "negligible drag in near-vacuum");
+}
+
 console.log("ok — orbit reached, liftoff is gradual, a fuel-less rocket falls short");
