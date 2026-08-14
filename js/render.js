@@ -124,17 +124,26 @@ function drawBoosterCam(ctx, w, h) {
 
   const topY = py + 30;
   const landY = deckY - 34;
-  const u = Math.min(cam.t / 120, 1);
-  const eased = 1 - (1 - u) * (1 - u); // decelerating descent (landing burn)
-  const by = topY + eased * (landY - topY);
-  const landed = cam.t >= 120;
-  drawMiniBooster(ctx, mx, by, cam.t > 55 && !landed, cam.t > 96, cam.t);
-  if (cam.t >= 118 && cam.t < 150) { // touchdown dust
-    const a = 1 - (cam.t - 118) / 32;
+  const midY = topY + 0.62 * (landY - topY);
+  const LAND = 360; // frames to touchdown (~6s): free-fall, then a landing burn
+  let by;
+  if (cam.t < 180) {
+    const u = cam.t / 180;
+    by = topY + u * u * (midY - topY); // falling, accelerating
+  } else if (cam.t < LAND) {
+    const u = (cam.t - 180) / 180;
+    by = midY + (1 - (1 - u) * (1 - u)) * (landY - midY); // burn, decelerating to the deck
+  } else {
+    by = landY;
+  }
+  const landed = cam.t >= LAND;
+  drawMiniBooster(ctx, mx, by, cam.t > 168 && !landed, cam.t > LAND - 60, cam.t);
+  if (cam.t >= LAND - 4 && cam.t < LAND + 50) { // touchdown dust
+    const a = 1 - (cam.t - (LAND - 4)) / 54;
     ctx.fillStyle = `rgba(220,225,235,${a * 0.5})`;
-    for (const dx of [-14, -6, 6, 14]) {
+    for (const dx of [-16, -7, 7, 16]) {
       ctx.beginPath();
-      ctx.arc(mx + dx, deckY, 3 + (cam.t - 118) * 0.4, 0, Math.PI * 2);
+      ctx.arc(mx + dx, deckY, 3 + (cam.t - (LAND - 4)) * 0.35, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -462,12 +471,15 @@ export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0, rocketImg
   updateEffects();
   drawEffects(ctx);
 
-  // --- deployed satellite: separates and drifts away, panels unfolding ---
+  // --- deployed satellite: releases from the nose (top) and drifts ahead ---
   if (state.deployed) {
     if (deployFrame == null) deployFrame = frame;
     const age = frame - deployFrame;
-    const off = Math.min(age * 0.8, 320);
-    drawSatellite(ctx, w / 2 + 24 + off * 0.7, rocketY - 16 - off * 0.5, age);
+    const off = Math.min(age * 0.7, 140); // drift just clear of the nose, then float
+    // the rocket's nose, accounting for its pitch-over tilt
+    const noseX = w / 2 + dh * Math.sin(tilt);
+    const noseY = rocketY - dh * Math.cos(tilt);
+    drawSatellite(ctx, noseX + Math.sin(tilt) * off, noseY - Math.cos(tilt) * off, age);
   } else {
     deployFrame = null;
   }
