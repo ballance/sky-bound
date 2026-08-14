@@ -13,6 +13,18 @@ export function vCirc(alt, cfg = CONFIG) {
   return Math.sqrt(cfg.GM / (cfg.R_EARTH + Math.max(0, alt)));
 }
 
+// Osculating orbit apoapsis/periapsis ALTITUDES from the current state.
+export function orbitElements(state, cfg = CONFIG) {
+  const r = cfg.R_EARTH + Math.max(0, state.altitude);
+  const v2 = state.vSpeed * state.vSpeed + state.hSpeed * state.hSpeed;
+  const eps = v2 / 2 - cfg.GM / r; // specific orbital energy
+  if (eps >= 0) return { apo: Infinity, peri: r - cfg.R_EARTH }; // unbound
+  const a = -cfg.GM / (2 * eps);
+  const h = r * state.hSpeed; // angular momentum ~ r * tangential(=horizontal) speed
+  const e = Math.sqrt(Math.max(0, 1 + (2 * eps * h * h) / (cfg.GM * cfg.GM)));
+  return { apo: a * (1 + e) - cfg.R_EARTH, peri: a * (1 - e) - cfg.R_EARTH };
+}
+
 // Straight up, then tilt over to build sideways speed. Same in both modes.
 export function pitch(alt, cfg = CONFIG) {
   const f = clamp((alt - cfg.PITCH_START_ALT) / (cfg.PITCH_END_ALT - cfg.PITCH_START_ALT), 0, 1);
@@ -136,7 +148,7 @@ export function step(state, dt, cfg = CONFIG, rocket) {
   }
 
   // orbit: not an end state — the sim keeps running and the rocket coasts.
-  if (!state.orbited && state.altitude >= cfg.ORBIT_ALT && state.hSpeed >= cfg.ORBIT_SPEED) {
+  if (!state.orbited && state.altitude >= cfg.ORBIT_MARGIN_ALT && state.hSpeed >= vCirc(state.altitude, cfg)) {
     state.orbited = true;
     state.engineOn = false; // cut the engine; coast around
     state.vSpeed = 0; // level off into a stable orbit
