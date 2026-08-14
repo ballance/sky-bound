@@ -3,7 +3,7 @@
 // No framework. Run: node js/sim.test.js
 import assert from "node:assert";
 import { CONFIG } from "./config.js";
-import { PARTS } from "./parts.js";
+import { PARTS, STARTER_ROCKET } from "./parts.js";
 import { initState, step, applyAction, triggerReady, simulate, gravity, vCirc, orbitElements } from "./sim.js";
 
 // mini version of main's normalizeRocket (core parts only — enough for tests)
@@ -47,7 +47,20 @@ function profile(rocket, plan) {
   return { final: s, t1km, at };
 }
 
-const good = normalize(["bigEngine", "tank", "tank", "smallEngine", "tank", "probe"]);
+// standalone delta-v budget (same per-stage field names normalize() produces)
+function dvBudget(r) {
+  const pay = r.probeMass + (r.fairingMass || 0);
+  const above = (i) => r.stages.slice(i).reduce((m, s) => m + s.dryMass + s.fuel, 0) + pay;
+  let d = 0;
+  for (let i = 0; i < r.stages.length; i++) {
+    const s = r.stages[i];
+    const m0 = above(i);
+    d += s.ve * Math.log(m0 / (m0 - s.fuel));
+  }
+  return d;
+}
+
+const good = normalize(STARTER_ROCKET);
 const liftMass = good.probeMass + good.stages.reduce((n, st) => n + st.dryMass + st.fuel, 0);
 const twr = good.stages[0].thrust / (liftMass * CONFIG.GRAVITY0);
 const p = profile(good, goodPlan);
@@ -57,18 +70,24 @@ console.log(
     `alt @3s ${(p.at[3] || 0).toFixed(0)}m @6s ${(p.at[6] || 0).toFixed(0)}m @10s ${(p.at[10] || 0).toFixed(0)}m`
 );
 console.log(
-  `result ${p.final.orbited ? "orbit" : p.final.status} at T+${p.final.t.toFixed(0)}s (real ~${(p.final.t / CONFIG.TIME_SCALE).toFixed(0)}s) · ` +
-    `maxAlt ${(p.final.maxAlt / 1000).toFixed(0)}km · hSpeed ${p.final.maxHSpeed.toFixed(0)}`
+  `starter: reaches orbit=${p.final.orbited} · maxAlt ${(p.final.maxAlt / 1000).toFixed(0)}km · ` +
+    `hSpeed ${p.final.maxHSpeed.toFixed(0)} · dv ${dvBudget(good).toFixed(0)} · at T+${p.final.t.toFixed(0)}s (real ~${(p.final.t / CONFIG.TIME_SCALE).toFixed(0)}s)`
 );
 
-// TODO Task 5: rewritten for real vCirc regime
-// assert.ok(p.final.orbited, "expected the rocket to reach orbit");
+// the starter rocket must reach a real circular orbit above the atmosphere
+assert.ok(p.final.orbited, "the starter rocket must reach orbit (hSpeed >= vCirc above the atmosphere)");
+const els = orbitElements(p.final, CONFIG);
+assert.ok(els.peri > 100000, `periapsis ${els.peri.toFixed(0)} must clear the atmosphere`);
+assert.ok(dvBudget(good) >= CONFIG.DV_TO_ORBIT, `starter delta-v ${dvBudget(good).toFixed(0)} must exceed ${CONFIG.DV_TO_ORBIT}`);
+
+// liftoff stays gradual, like a real rocket — not a leap off the pad
 assert(twr < 3.2, `liftoff TWR ${twr.toFixed(2)} too high — should lift off slowly like a real rocket`);
 assert(p.t1km != null && p.t1km >= 4, `cleared 1km in ${p.t1km}s — still leaping off the pad`);
 
+// underpowered: one small engine + one tank cannot make orbit
+assert.ok(!simulate(normalize(["smallEngine", "tank", "probe"]), goodPlan, CONFIG).orbited, "underpowered rocket must not orbit");
 // no fuel: an engine with no tank can never thrust, so it can never orbit
-const weak = normalize(["smallEngine", "probe"]);
-assert.ok(!simulate(weak, goodPlan, CONFIG).orbited, "a rocket with no fuel must not reach orbit");
+assert.ok(!simulate(normalize(["smallEngine", "probe"]), goodPlan, CONFIG).orbited, "a rocket with no fuel must not reach orbit");
 
 // Real gravity + circular velocity
 assert.ok(Math.abs(gravity(0) - 9.81) < 0.05, `surface gravity ${gravity(0).toFixed(3)} should be ~9.81`);
@@ -108,4 +127,4 @@ import { initState as _initState, step as _step } from "./sim.js";
   assert.ok(orbitElements(st2, CONFIG).apo > 260000, "faster than circular raises apoapsis");
 }
 
-console.log("ok — orbit reached, liftoff is gradual, a fuel-less rocket falls short");
+console.log("ok — starter reaches real circular orbit, liftoff is gradual, underpowered rockets fall short");

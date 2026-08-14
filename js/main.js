@@ -56,6 +56,21 @@ function normalizeRocket(partIds) {
   return { stages, probeMass, hasParachute, hasLegs, hasFairing, fairingMass };
 }
 
+// Serial-staging total delta-v: sum of ve * ln(m0/mf) per stage, lower stages
+// carrying the upper stages + payload as dead weight.
+function deltaVBudget(rocket) {
+  const payload = rocket.probeMass + (rocket.fairingMass || 0);
+  const above = (i) => rocket.stages.slice(i).reduce((m, s) => m + s.dryMass + s.fuel, 0) + payload;
+  let dv = 0;
+  for (let i = 0; i < rocket.stages.length; i++) {
+    const s = rocket.stages[i];
+    const m0 = above(i);
+    const mf = m0 - s.fuel;
+    if (mf > 0) dv += s.ve * Math.log(m0 / mf);
+  }
+  return dv;
+}
+
 function validate(rocket) {
   if (rocket.stages.length === 0) return "Add an engine so your rocket can fly.";
   if (rocket.probeMass === 0) return "Add a Probe — the rocket needs a brain.";

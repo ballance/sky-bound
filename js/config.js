@@ -29,8 +29,8 @@ export const CONFIG = {
   // sideways speed. Same in auto and hard mode (an 8-year-old flies the
   // staging, not a manual gravity turn).
   PITCH_START_ALT: 1_500, // start tilting here
-  PITCH_END_ALT: 65_000, // fully tilted here
-  PITCH_MAX: 1.15, // radians from vertical (~66°)
+  PITCH_END_ALT: 105_000, // fully tilted here
+  PITCH_MAX: 1.50, // radians from vertical (~86°, nearly horizontal near orbit)
 
   // Failure
   CRASH_SPEED: 12, // m/s downward at touchdown you can survive without a chute
