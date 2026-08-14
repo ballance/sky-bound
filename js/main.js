@@ -34,14 +34,14 @@ function normalizeRocket(partIds) {
     if (!p) continue;
     const fuel = item.fuel ?? p.fuel; // per-tank amount, defaulting to capacity
     if (p.kind === "engine") {
-      cur = { thrust: p.thrust, burn: p.burn, dryMass: p.mass, fuel: 0 };
+      cur = { thrust: p.thrust, ve: p.ve, dryMass: p.mass, fuel: 0 };
       stages.push(cur);
     } else if (p.kind === "tank") {
       if (cur) { cur.fuel += fuel; cur.dryMass += p.mass; }
     } else if (p.kind === "booster") {
       // radial boosters fire with the bottom stage: just more thrust + fuel there
       const s = stages[0];
-      if (s) { s.thrust += p.thrust; s.burn += p.burn; s.fuel += fuel; s.dryMass += p.mass; }
+      if (s) { s.thrust += p.thrust; s.fuel += fuel; s.dryMass += p.mass; }
     } else if (p.kind === "probe") {
       probeMass += p.mass;
     } else if (p.kind === "utility") {

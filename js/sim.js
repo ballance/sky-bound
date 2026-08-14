@@ -72,7 +72,10 @@ export function step(state, dt, cfg = CONFIG, rocket) {
   // scale with it, so a real gradual liftoff costs no extra fuel.
   if (thrusting) state.throttle = Math.min(1, state.throttle + dt / cfg.THROTTLE_RAMP);
   const F = thrusting ? stage.thrust * state.throttle : 0;
-  if (thrusting) state.fuel = Math.max(0, state.fuel - stage.burn * state.throttle * dt);
+  if (thrusting) {
+    const mdot = stage.thrust / stage.ve; // rocket equation mass flow
+    state.fuel = Math.max(0, state.fuel - mdot * state.throttle * dt);
+  }
 
   const mass = currentMass(state, rocket);
   const p = pitch(state.altitude, cfg);

@@ -160,7 +160,7 @@ export function partSpecs(id) {
   const p = PARTS[id];
   switch (p.kind) {
     case "engine":
-      return `Thrust <b>${thrust(p.thrust)}</b> · Burn <b>${p.burn} kg/s</b>`;
+      return `Thrust <b>${thrust(p.thrust)}</b> · Exhaust <b>${(p.ve / 1000).toFixed(1)} km/s</b>`;
     case "tank":
       return `Fuel <b>${kg(p.fuel)}</b> · Dry <b>${kg(p.mass)}</b>`;
     case "booster":

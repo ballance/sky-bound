@@ -13,7 +13,7 @@ function normalize(ids) {
   let cur = null;
   for (const id of ids) {
     const p = PARTS[id];
-    if (p.kind === "engine") { cur = { thrust: p.thrust, burn: p.burn, dryMass: p.mass, fuel: 0 }; stages.push(cur); }
+    if (p.kind === "engine") { cur = { thrust: p.thrust, ve: p.ve, dryMass: p.mass, fuel: 0 }; stages.push(cur); }
     else if (p.kind === "tank") { cur.fuel += p.fuel; cur.dryMass += p.mass; }
     else if (p.kind === "probe") probeMass += p.mass;
   }
@@ -72,5 +72,17 @@ assert.ok(!simulate(weak, goodPlan, CONFIG).orbited, "a rocket with no fuel must
 // Real gravity + circular velocity
 assert.ok(Math.abs(gravity(0) - 9.81) < 0.05, `surface gravity ${gravity(0).toFixed(3)} should be ~9.81`);
 assert.ok(Math.abs(vCirc(200_000) - 7789) < 20, `v_circ@200km ${vCirc(200_000).toFixed(0)} should be ~7789 m/s`);
+
+// rocket equation: a single stage delivers ve * ln(m0/mf), integrated by step()
+import { initState as _initState, step as _step } from "./sim.js";
+{
+  const r = { probeMass: 0, hasParachute: false, stages: [{ thrust: 1e6, ve: 3000, dryMass: 1000, fuel: 9000 }] };
+  const s = _initState(r); s.status = "flying"; s.engineOn = true; s.throttle = 1; // full throttle, no ramp
+  const cfg = { ...CONFIG, GM: 0, RHO0: 0, PITCH_MAX: 0 }; // straight up: isolate the rocket equation
+  for (let i = 0; i < 100000 && s.fuel > 0; i++) { _step(s, 0.01, cfg, r); }
+  const expected = 3000 * Math.log(10000 / 1000); // ~6908 m/s
+  const got = Math.hypot(s.vSpeed, s.hSpeed);
+  assert.ok(Math.abs(got - expected) < 60, `stage dv ${got.toFixed(0)} should be ~${expected.toFixed(0)}`);
+}
 
 console.log("ok — orbit reached, liftoff is gradual, a fuel-less rocket falls short");

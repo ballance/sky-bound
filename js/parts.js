@@ -3,12 +3,12 @@
 export const PARTS = {
   bigEngine: {
     id: "bigEngine", name: "Big Engine", kind: "engine", icon: "🔥",
-    thrust: 560_000, burn: 190, mass: 1_400,
+    thrust: 560_000, ve: 3000, mass: 1_400,
     blurb: "Lots of push, drinks fuel fast.",
   },
   smallEngine: {
     id: "smallEngine", name: "Small Engine", kind: "engine", icon: "🔸",
-    thrust: 210_000, burn: 62, mass: 600,
+    thrust: 210_000, ve: 3500, mass: 600,
     blurb: "Gentle push, sips fuel — good for space.",
   },
   tank: {
@@ -25,7 +25,7 @@ export const PARTS = {
   // Unlockable
   booster: {
     id: "booster", name: "Side Booster", kind: "booster", icon: "🚀",
-    thrust: 340_000, burn: 115, mass: 800, fuel: 4_500, price: 8,
+    thrust: 340_000, ve: 2900, mass: 800, fuel: 4_500, price: 8,
     blurb: "Straps on the side for extra kick at liftoff.",
   },
   bigTank: {
