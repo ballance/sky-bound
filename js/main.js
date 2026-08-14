@@ -277,6 +277,7 @@ let lastThrusting = false;
 let postFrames = -1; // frames to keep animating effects after the flight ends
 let countdownTimers = []; // all scheduled callouts/ticks of the launch sequence
 let paused = false;
+let warp = 1;
 let orbitAwarded = false;
 let reentryTimer = 0;
 let loopFn = null; // the flight's rAF callback, so pause/resume can restart it
@@ -444,6 +445,8 @@ function beginFlight(rocket) {
   postFrames = -1;
   orbitAwarded = false;
   reentryTimer = 0;
+  warp = 1;
+  $("warp").querySelectorAll("button").forEach((x) => x.classList.toggle("active", x.dataset.warp === "1"));
   resetEffects();
   rocketImg = buildRocketImage(buildIds());
   renderChecklist(0);
@@ -471,7 +474,7 @@ function beginFlight(rocket) {
     const realDt = Math.min(0.05, (ts - last) / 1000);
     last = ts;
     // advance the sim by TIME_SCALE sim-seconds per real second, in small steps
-    let simDt = realDt * CONFIG.TIME_SCALE;
+    let simDt = realDt * CONFIG.TIME_SCALE * warp;
     while (simDt > 0 && sim.status === "flying") {
       const dt = Math.min(CONFIG.DT, simDt);
       fireDue();
@@ -652,6 +655,13 @@ $("hardControls").addEventListener("click", (e) => {
   const b = e.target.closest("button");
   if (!b || b.disabled || !sim || sim.status !== "flying") return;
   applyAction(sim, b.dataset.act, rocketNow);
+});
+
+$("warp").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-warp]");
+  if (!b) return;
+  warp = Number(b.dataset.warp);
+  $("warp").querySelectorAll("button").forEach((x) => x.classList.toggle("active", x === b));
 });
 
 $("launchBtn").addEventListener("click", startLaunch);

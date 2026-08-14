@@ -22,7 +22,8 @@ export const CONFIG = {
 
   // Sim stepping
   DT: 0.05, // seconds per physics step (small = stable)
-  TIME_SCALE: 2, // sim-seconds per real-second (near real time; 1 = fully real time)
+  TIME_SCALE: 1, // base: real time; multiplied by the live warp factor
+  WARP_TIERS: [1, 2, 5, 10, 25],
   THROTTLE_RAMP: 2.5, // seconds for engines to spool from 0 to full thrust
 
   // Pitch program: the rocket flies straight up, then tilts over to build
