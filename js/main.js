@@ -195,10 +195,15 @@ function updateBuildStats() {
   const twr = mass > 0 && liftThrust > 0 ? liftThrust / (mass * CONFIG.GRAVITY0) : 0;
   const twrClass = twr >= 1.3 ? "good" : twr >= 1 ? "mid" : "bad";
   const twrLabel = twr >= 1.3 ? "lifts off strong 🚀" : twr >= 1 ? "lifts off slowly" : "too heavy to fly 🚫";
+  const dv = deltaVBudget(rocket);
+  const dvOk = dv >= CONFIG.DV_TO_ORBIT;
+  const dvClass = dvOk ? "good" : "bad";
+  const dvLabel = dvOk ? "enough to reach orbit ✅" : `need ${(CONFIG.DV_TO_ORBIT / 1000).toFixed(1)} km/s`;
   $("rocketStats").innerHTML =
     `Stages <b>${rocket.stages.length}</b> &nbsp;·&nbsp; Fuel <b>${totalFuel.toLocaleString()}</b> kg &nbsp;·&nbsp; ` +
     `Weight <b>${Math.round(mass).toLocaleString()}</b> kg &nbsp;·&nbsp; Thrust <b>${Math.round(liftThrust / 1000).toLocaleString()}</b> kN` +
-    `<div class="twr twr-${twrClass}">Thrust ÷ Weight = <b>${twr.toFixed(2)}</b> — ${twrLabel}</div>`;
+    `<div class="twr twr-${twrClass}">Thrust ÷ Weight = <b>${twr.toFixed(2)}</b> — ${twrLabel}</div>` +
+    `<div class="twr twr-${dvClass}">Delta-v = <b>${(dv / 1000).toFixed(2)} km/s</b> — ${dvLabel}</div>`;
   $("buildWarn").textContent = validate(rocket);
 }
 
