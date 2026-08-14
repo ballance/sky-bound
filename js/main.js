@@ -3,7 +3,7 @@ import { CONFIG } from "./config.js";
 import { PARTS } from "./parts.js";
 import { MILESTONES, MISSIONS } from "./missions.js";
 import { load, save, reset } from "./store.js";
-import { initState, step, applyAction, triggerReady, simulate } from "./sim.js";
+import { initState, step, applyAction, triggerReady, simulate, orbitElements } from "./sim.js";
 import { drawScene, resetEffects, startBoosterRecovery } from "./render.js";
 import { toggleMusic } from "./music.js";
 import * as sfx from "./sfx.js";
@@ -323,7 +323,24 @@ function updateHUD() {
   $("clock").textContent = `T+ ${mm}:${ss}`;
   $("tAlt").textContent = `${(s.altitude / 1000).toFixed(1)} km`;
   const spd = Math.hypot(s.vSpeed, s.hSpeed);
-  $("tSpd").textContent = `${Math.round(spd)} m/s`;
+  $("tSpd").textContent = `${(spd / 1000).toFixed(2)} km/s`;
+  const el = orbitElements(s, CONFIG);
+  const km = (m) => (m === Infinity ? "escape" : `${(m / 1000).toFixed(0)} km`);
+  $("tApo").textContent = s.altitude > 30000 ? km(el.apo) : "—";
+  $("tPeri").textContent = s.altitude > 30000 ? km(el.peri) : "—";
+  const remaining = (() => {
+    let dv = 0; const stages = rocketNow.stages;
+    const payload = rocketNow.probeMass + (rocketNow.fairingMass || 0);
+    for (let i = s.stageIndex; i < stages.length; i++) {
+      const above = stages.slice(i).reduce((m, st) => m + st.dryMass + st.fuel, 0) + payload;
+      const fuelNow = i === s.stageIndex ? s.fuel : stages[i].fuel;
+      const m0 = above - (stages[i].fuel - fuelNow);
+      const mf = m0 - fuelNow;
+      if (mf > 0) dv += stages[i].ve * Math.log(m0 / mf);
+    }
+    return dv;
+  })();
+  $("tDv").textContent = `${(remaining / 1000).toFixed(1)} km/s`;
   const temp = Math.round(s.noseTemp);
   const tt = $("tTemp");
   tt.textContent = `${temp}°C`;
