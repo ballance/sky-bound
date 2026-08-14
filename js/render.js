@@ -386,7 +386,8 @@ function drawPad(ctx, w, y) {
 export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0, rocketImg = null) {
   const w = ctx.canvas.width;
   const h = ctx.canvas.height;
-  const mPerPx = 6; // vertical meters per pixel
+  // meters-per-pixel grows with altitude: fine detail near the pad, wide view high up
+  const mPerPx = 6 + Math.min(2600, state.altitude / 90);
 
   // --- camera: rocket lifts off the pad, then the camera follows it up ---
   const ceil = h * 0.35;
