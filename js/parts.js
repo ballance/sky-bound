@@ -38,11 +38,6 @@ export const PARTS = {
     mass: 120, price: 6,
     blurb: "Floats you down for a safe landing.",
   },
-  legs: {
-    id: "legs", name: "Landing Legs", kind: "utility", icon: "🦵",
-    mass: 200, price: 12,
-    blurb: "Land the booster upright, SpaceX-style.",
-  },
   fairing: {
     id: "fairing", name: "Payload Fairing", kind: "fairing", icon: "🔺",
     mass: 150, price: 7,

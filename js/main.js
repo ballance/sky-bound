@@ -94,6 +94,7 @@ function renderBuild() {
   pal.innerHTML = "";
   for (const id of game.unlockedParts) {
     const p = PARTS[id];
+    if (!p) continue; // skip parts that no longer exist (e.g. removed from a save)
     const b = document.createElement("button");
     b.className = "part";
     b.draggable = true;
@@ -257,6 +258,7 @@ let postFrames = -1; // frames to keep animating effects after the flight ends
 let countdownTimers = []; // all scheduled callouts/ticks of the launch sequence
 let paused = false;
 let orbitAwarded = false;
+let reentryTimer = 0;
 let loopFn = null; // the flight's rAF callback, so pause/resume can restart it
 
 // Rasterize the assembled build into one image the launch view can draw.
@@ -301,6 +303,10 @@ function updateHUD() {
   $("tAlt").textContent = `${(s.altitude / 1000).toFixed(1)} km`;
   const spd = Math.hypot(s.vSpeed, s.hSpeed);
   $("tSpd").textContent = `${Math.round(spd)} m/s`;
+  const temp = Math.round(s.noseTemp);
+  const tt = $("tTemp");
+  tt.textContent = `${temp}°C`;
+  tt.style.color = temp > 1000 ? "#ff6b6b" : temp > 300 ? "#ffb020" : "";
   const stage = rocketNow.stages[s.stageIndex];
   const pct = stage ? (s.fuel / stage.fuel) * 100 : 0;
   $("tFuel").style.width = `${Math.max(0, pct)}%`;
@@ -417,6 +423,7 @@ function beginFlight(rocket) {
   lastThrusting = false;
   postFrames = -1;
   orbitAwarded = false;
+  reentryTimer = 0;
   resetEffects();
   rocketImg = buildRocketImage(buildIds());
   renderChecklist(0);
@@ -457,8 +464,8 @@ function beginFlight(rocket) {
     // sound effects on state changes (checked before the trackers update)
     if (sim.stageIndex > lastStageIndex) {
       sfx.stageSep();
-      // first-stage separation with legs → fly the booster back (cinematic)
-      if (sim.stageIndex === 1 && rocketNow.hasLegs && !sim.boosterRecovered) {
+      // first-stage separation → always fly the booster back (legs are standard)
+      if (sim.stageIndex === 1 && !sim.boosterRecovered) {
         sim.boosterRecovered = true;
         startBoosterRecovery();
       }
@@ -481,6 +488,12 @@ function beginFlight(rocket) {
       awardResults(sim);
       $("launchBtn").disabled = false; // free to fly again while it orbits
       const c = $("callout"); c.textContent = ""; c.className = "callout";
+    }
+    // a parachute-equipped stage de-orbits after a short coast and re-enters
+    if (sim.orbited && rocketNow.hasParachute && !sim.reentering) {
+      reentryTimer += 1;
+      const deployDone = !$("deployToggle").checked || sim.deployed;
+      if (reentryTimer > 200 && deployDone) applyAction(sim, "reenter", rocketNow);
     }
     frame++;
     drawScene(ctx, sim, rocketNow, CONFIG, frame, rocketImg);

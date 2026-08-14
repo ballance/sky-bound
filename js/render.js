@@ -459,6 +459,22 @@ export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0, rocketImg
     ctx.restore();
   }
 
+  // --- aero heating glow on the leading edge (scales with nose temperature) ---
+  if ((state.noseTemp || 0) > 600 && !state.chuteOpen) {
+    const heat = Math.min(1, (state.noseTemp - 600) / 900);
+    const gy = rocketY + 8;
+    const r = 18 + heat * 18;
+    const glow = ctx.createRadialGradient(w / 2, gy, 2, w / 2, gy, r);
+    glow.addColorStop(0, `rgba(255,210,110,${0.85 * heat})`);
+    glow.addColorStop(0.5, `rgba(255,110,45,${0.55 * heat})`);
+    glow.addColorStop(1, "rgba(255,70,25,0)");
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(w / 2, gy, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (state.chuteOpen) drawParachute(ctx, w / 2, rocketY - dh, frame);
+
   // --- separation & disassembly effects: spawn on the transition, then animate ---
   if (state.stageIndex > prevStage) spawnStageSep(w / 2, rocketY);
   prevStage = state.stageIndex;
@@ -487,8 +503,10 @@ export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0, rocketImg
   // --- big status banner ---
   if (state.status === "aborted") banner(ctx, w, "💥  R.U.D.!", "#f88");
   else if (state.status === "crashed") banner(ctx, w, "💥  CRASH", "#f88");
-  else if (state.orbited) banner(ctx, w, "🛰️  ORBIT!  🛰️", "#7ef");
   else if (state.status === "landed") banner(ctx, w, "🪂  SAFE LANDING", "#8f8");
+  else if (state.reentering && state.chuteOpen) banner(ctx, w, "🪂  CHUTES OUT", "#ffd27a");
+  else if (state.reentering) banner(ctx, w, "🔥  RE-ENTRY", "#ffb060");
+  else if (state.orbited) banner(ctx, w, "🛰️  ORBIT!  🛰️", "#7ef");
 
   drawBoosterCam(ctx, w, h); // first-stage recovery inset (when active)
 }
@@ -503,6 +521,32 @@ function drawFlame(ctx, frame) {
   ctx.fillStyle = "#ff7a2a";
   ctx.beginPath();
   ctx.moveTo(-9, 0); ctx.lineTo(9, 0); ctx.lineTo(0, len * 0.6); ctx.closePath(); ctx.fill();
+}
+
+// A swaying parachute canopy above the descending stage (nose at topY).
+function drawParachute(ctx, x, topY, frame) {
+  const cx = x + Math.sin(frame * 0.06) * 4;
+  const chuteY = topY - 50;
+  const cw = 46;
+  ctx.strokeStyle = "#c8ccd4";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x - 6, topY); ctx.lineTo(cx - cw / 2, chuteY);
+  ctx.moveTo(x + 6, topY); ctx.lineTo(cx + cw / 2, chuteY);
+  ctx.moveTo(x, topY); ctx.lineTo(cx, chuteY);
+  ctx.stroke();
+  ctx.fillStyle = "#ff7a2a";
+  ctx.beginPath();
+  ctx.moveTo(cx - cw / 2, chuteY);
+  ctx.quadraticCurveTo(cx, chuteY - 34, cx + cw / 2, chuteY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = "#ffd24a";
+  ctx.beginPath();
+  ctx.moveTo(cx - 9, chuteY);
+  ctx.quadraticCurveTo(cx, chuteY - 28, cx + 9, chuteY);
+  ctx.closePath();
+  ctx.fill();
 }
 
 function banner(ctx, w, text, color) {

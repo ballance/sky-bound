@@ -33,6 +33,9 @@ export function initState(rocket) {
     fairingJettisoned: false,
     orbited: false,
     boosterRecovered: false,
+    reentering: false,
+    chuteOpen: false,
+    noseTemp: 15, // °C, aerodynamic heating of the nose cone
     maxAlt: 0,
     maxHSpeed: 0,
     xDist: 0, // horizontal distance travelled, for star parallax
@@ -68,16 +71,36 @@ export function step(state, dt, cfg = CONFIG, rocket) {
 
   const mass = currentMass(state, rocket);
   const p = pitch(state.altitude, cfg);
-  // once in orbit the rocket coasts — no gravity loss, it just keeps circling
-  const g = state.orbited ? 0 : gravity(state.altitude, cfg);
+  // in a stable orbit the rocket coasts (no gravity loss); on re-entry gravity
+  // returns and pulls it back down.
+  const g = state.orbited && !state.reentering ? 0 : gravity(state.altitude, cfg);
   const aUp = (F * Math.cos(p)) / mass - g;
   const aH = (F * Math.sin(p)) / mass;
 
   state.vSpeed += aUp * dt;
   state.hSpeed += aH * dt;
+
+  // re-entry: atmospheric drag bleeds off speed; the parachute adds a lot of it.
+  if (state.reentering) {
+    if (rocket.hasParachute && !state.chuteOpen && state.altitude < cfg.CHUTE_ALT && state.vSpeed < 0) {
+      state.chuteOpen = true;
+    }
+    const dense = Math.max(0, 1 - state.altitude / cfg.SPACE_ALT); // thicker air lower down
+    const drag = (state.chuteOpen ? 5 : 0.5) * dense;
+    const k = Math.min(1, drag * dt);
+    state.hSpeed -= state.hSpeed * k;
+    if (state.vSpeed < 0) state.vSpeed -= state.vSpeed * k; // slow the fall
+  }
+
   state.altitude += state.vSpeed * dt;
   state.xDist += state.hSpeed * dt;
   state.t += dt;
+
+  // nose-cone temperature: heating from speed through the air, with thermal lag
+  const speed = Math.hypot(state.vSpeed, state.hSpeed);
+  const dense = Math.max(0, 1 - state.altitude / cfg.SPACE_ALT);
+  const heatTarget = 15 + dense * speed * speed * 7.5e-4;
+  state.noseTemp += (heatTarget - state.noseTemp) * Math.min(1, 0.6 * dt);
 
   state.maxAlt = Math.max(state.maxAlt, state.altitude);
   state.maxHSpeed = Math.max(state.maxHSpeed, state.hSpeed);
@@ -109,6 +132,7 @@ export function applyAction(state, action, rocket) {
   else if (action === "cut") state.engineOn = false;
   else if (action === "deploy") state.deployed = true;
   else if (action === "jettisonFairing") state.fairingJettisoned = true;
+  else if (action === "reenter") state.reentering = true;
   else if (action === "dropStage") {
     if (state.stageIndex < rocket.stages.length - 1) {
       state.stageIndex += 1;

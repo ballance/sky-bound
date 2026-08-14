@@ -10,7 +10,7 @@ export const CONFIG = {
 
   // Sim stepping
   DT: 0.05, // seconds per physics step (small = stable)
-  TIME_SCALE: 8, // sim-seconds per real-second, so a long flight is watchable
+  TIME_SCALE: 2, // sim-seconds per real-second (near real time; 1 = fully real time)
   THROTTLE_RAMP: 2.5, // seconds for engines to spool from 0 to full thrust
 
   // Pitch program: the rocket flies straight up, then tilts over to build
@@ -25,4 +25,7 @@ export const CONFIG = {
 
   // Fairings jettison once the air is thin enough that the payload is safe
   FAIRING_ALT: 45_000, // 45 km
+
+  // Re-entry: the parachute opens once the stage is low and slow enough
+  CHUTE_ALT: 5_000, // 5 km
 };
