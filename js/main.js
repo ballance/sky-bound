@@ -327,7 +327,9 @@ function updateHUD() {
   const el = orbitElements(s, CONFIG);
   const km = (m) => (m === Infinity ? "escape" : `${(m / 1000).toFixed(0)} km`);
   $("tApo").textContent = s.altitude > 30000 ? km(el.apo) : "—";
-  $("tPeri").textContent = s.altitude > 30000 ? km(el.peri) : "—";
+  // periapsis is only meaningful once it clears the surface; a suborbital arc
+  // dips below the ground (deep-negative peri) — show a dash until it's real.
+  $("tPeri").textContent = s.altitude > 30000 && el.peri > 0 ? km(el.peri) : "—";
   const remaining = (() => {
     let dv = 0; const stages = rocketNow.stages;
     const payload = rocketNow.probeMass + (rocketNow.fairingMass || 0);
