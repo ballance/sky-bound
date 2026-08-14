@@ -123,7 +123,7 @@ function drawBoosterCam(ctx, w, h) {
   ctx.beginPath(); ctx.moveTo(mx - 6, deckY - 7); ctx.lineTo(mx + 6, deckY + 1); ctx.moveTo(mx + 6, deckY - 7); ctx.lineTo(mx - 6, deckY + 1); ctx.stroke();
 
   const topY = py + 30;
-  const landY = deckY - 34;
+  const landY = deckY - 2; // booster base rests on the deck (legs touch the X)
   const midY = topY + 0.62 * (landY - topY);
   const LAND = 360; // frames to touchdown (~6s): free-fall, then a landing burn
   let by;
