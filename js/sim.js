@@ -2,10 +2,15 @@
 // This is the swappable core a real engine could sit behind, and the tested part.
 import { CONFIG } from "./config.js";
 
-// gravity weakens with altitude (inverse-square, arcade-tuned constants)
+// gravity from real GM, weakening with altitude (inverse-square)
 export function gravity(alt, cfg = CONFIG) {
-  const r = cfg.EARTH_RADIUS;
-  return cfg.GRAVITY0 * (r / (r + Math.max(0, alt))) ** 2;
+  const r = cfg.R_EARTH + Math.max(0, alt);
+  return cfg.GM / (r * r);
+}
+
+// circular orbital velocity at this altitude
+export function vCirc(alt, cfg = CONFIG) {
+  return Math.sqrt(cfg.GM / (cfg.R_EARTH + Math.max(0, alt)));
 }
 
 // Straight up, then tilt over to build sideways speed. Same in both modes.

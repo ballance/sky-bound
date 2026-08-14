@@ -8,6 +8,18 @@ export const CONFIG = {
   ORBIT_ALT: 100_000, // must be this high AND fast to orbit
   ORBIT_SPEED: 1_600, // m/s sideways (arcade, not real orbital velocity)
 
+  // Real Earth (SI)
+  G0: 9.80665,
+  R_EARTH: 6.371e6,
+  GM: 3.986e14,
+  // Atmosphere (exponential) and drag
+  RHO0: 1.225,
+  H_ATM: 8500,
+  CDA: 0.9, // drag coefficient x reference area (tuned)
+  // Orbit insertion: tangential speed >= vCirc, above this altitude
+  ORBIT_MARGIN_ALT: 140_000,
+  DV_TO_ORBIT: 9400, // build-screen "can reach orbit" threshold
+
   // Sim stepping
   DT: 0.05, // seconds per physics step (small = stable)
   TIME_SCALE: 2, // sim-seconds per real-second (near real time; 1 = fully real time)

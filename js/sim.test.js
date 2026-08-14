@@ -4,7 +4,7 @@
 import assert from "node:assert";
 import { CONFIG } from "./config.js";
 import { PARTS } from "./parts.js";
-import { initState, step, applyAction, triggerReady, simulate } from "./sim.js";
+import { initState, step, applyAction, triggerReady, simulate, gravity, vCirc } from "./sim.js";
 
 // mini version of main's normalizeRocket (core parts only — enough for tests)
 function normalize(ids) {
@@ -68,5 +68,9 @@ assert(p.t1km != null && p.t1km >= 4, `cleared 1km in ${p.t1km}s — still leapi
 // no fuel: an engine with no tank can never thrust, so it can never orbit
 const weak = normalize(["smallEngine", "probe"]);
 assert.ok(!simulate(weak, goodPlan, CONFIG).orbited, "a rocket with no fuel must not reach orbit");
+
+// Real gravity + circular velocity
+assert.ok(Math.abs(gravity(0) - 9.81) < 0.05, `surface gravity ${gravity(0).toFixed(3)} should be ~9.81`);
+assert.ok(Math.abs(vCirc(200_000) - 7789) < 20, `v_circ@200km ${vCirc(200_000).toFixed(0)} should be ~7789 m/s`);
 
 console.log("ok — orbit reached, liftoff is gradual, a fuel-less rocket falls short");
