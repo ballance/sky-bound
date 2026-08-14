@@ -38,6 +38,7 @@ let prevStage = 0;
 let prevFairing = false;
 let prevStatus = "ready";
 let deployFrame = null; // frame the satellite was released, for the drift animation
+let boosterCam = null; // { t } — SpaceX-style first-stage landing inset
 
 export function resetEffects() {
   effects = [];
@@ -45,6 +46,119 @@ export function resetEffects() {
   prevFairing = false;
   prevStatus = "ready";
   deployFrame = null;
+  boosterCam = null;
+}
+
+// Open the booster-cam: the separated first stage flies itself back to a droneship.
+export function startBoosterRecovery() {
+  boosterCam = { t: 0 };
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+// A slim first stage: base at (x,y), body up, optional landing burn + legs.
+function drawMiniBooster(ctx, x, y, burning, legsOut, t) {
+  ctx.save();
+  ctx.translate(x, y);
+  if (burning) {
+    const fl = 8 + (t % 3) * 2;
+    ctx.fillStyle = "#ffd24a";
+    ctx.beginPath(); ctx.moveTo(-3, 0); ctx.lineTo(3, 0); ctx.lineTo(0, fl); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#ff7a2a";
+    ctx.beginPath(); ctx.moveTo(-1.6, 0); ctx.lineTo(1.6, 0); ctx.lineTo(0, fl * 0.6); ctx.closePath(); ctx.fill();
+  }
+  if (legsOut) {
+    ctx.strokeStyle = "#8a9099";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(-4, -2); ctx.lineTo(-9, 1); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(4, -2); ctx.lineTo(9, 1); ctx.stroke();
+  }
+  ctx.fillStyle = "#e9edf5";
+  ctx.fillRect(-4, -34, 8, 34);
+  ctx.fillStyle = "#c23b3b";
+  ctx.fillRect(-4, -34, 8, 4); // interstage band
+  ctx.fillStyle = "#9aa2ad";
+  ctx.fillRect(-4, -3, 8, 3); // engine section
+  ctx.restore();
+}
+
+// The booster-cam inset: sky, sea, droneship, and the stage flying itself down.
+function drawBoosterCam(ctx, w, h) {
+  if (!boosterCam) return;
+  const cam = boosterCam;
+  cam.t += 1;
+  const pw = 156, ph = 190, px = 12, py = h - ph - 12;
+
+  ctx.save();
+  roundRect(ctx, px, py, pw, ph, 10);
+  ctx.fillStyle = "#05070f";
+  ctx.fill();
+  ctx.clip();
+
+  const sky = ctx.createLinearGradient(0, py, 0, py + ph);
+  sky.addColorStop(0, "#1b2a5e");
+  sky.addColorStop(0.68, "#3a6ea5");
+  sky.addColorStop(1, "#123a5f");
+  ctx.fillStyle = sky;
+  ctx.fillRect(px, py, pw, ph);
+  ctx.fillStyle = "#0f2742"; // sea
+  ctx.fillRect(px, py + ph - 32, pw, 32);
+
+  const deckW = 68, deckX = px + pw / 2 - deckW / 2, deckY = py + ph - 40;
+  ctx.fillStyle = "#22262e";
+  ctx.fillRect(deckX, deckY, deckW, 12);
+  ctx.fillStyle = "#3a3f4a";
+  ctx.fillRect(deckX, deckY, deckW, 3);
+  ctx.strokeStyle = "#c7ccd6"; // the landing X
+  ctx.lineWidth = 1.5;
+  const mx = deckX + deckW / 2;
+  ctx.beginPath(); ctx.moveTo(mx - 6, deckY - 7); ctx.lineTo(mx + 6, deckY + 1); ctx.moveTo(mx + 6, deckY - 7); ctx.lineTo(mx - 6, deckY + 1); ctx.stroke();
+
+  const topY = py + 30;
+  const landY = deckY - 34;
+  const u = Math.min(cam.t / 120, 1);
+  const eased = 1 - (1 - u) * (1 - u); // decelerating descent (landing burn)
+  const by = topY + eased * (landY - topY);
+  const landed = cam.t >= 120;
+  drawMiniBooster(ctx, mx, by, cam.t > 55 && !landed, cam.t > 96, cam.t);
+  if (cam.t >= 118 && cam.t < 150) { // touchdown dust
+    const a = 1 - (cam.t - 118) / 32;
+    ctx.fillStyle = `rgba(220,225,235,${a * 0.5})`;
+    for (const dx of [-14, -6, 6, 14]) {
+      ctx.beginPath();
+      ctx.arc(mx + dx, deckY, 3 + (cam.t - 118) * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,0.55)";
+  ctx.fillRect(px, py, pw, 16);
+  ctx.fillStyle = cam.t % 40 < 20 ? "#ff5a5a" : "#9fd4ff";
+  ctx.font = "bold 9px system-ui, sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText("● BOOSTER CAM", px + 6, py + 11);
+  if (landed) {
+    ctx.fillStyle = "#37d67a";
+    ctx.font = "bold 13px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("✓ RECOVERED", px + pw / 2, py + 15 + (ph - 15) / 2 + 4);
+  }
+  ctx.strokeStyle = "#33407a";
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, px, py, pw, ph, 10);
+  ctx.stroke();
+  ctx.restore();
+  // the cam stays up (showing ✓ RECOVERED) for the rest of the flight; cleared on reset
 }
 
 // A released satellite: body, dish, and solar panels that unfold after deploy.
@@ -363,6 +477,8 @@ export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0, rocketImg
   else if (state.status === "crashed") banner(ctx, w, "💥  CRASH", "#f88");
   else if (state.orbited) banner(ctx, w, "🛰️  ORBIT!  🛰️", "#7ef");
   else if (state.status === "landed") banner(ctx, w, "🪂  SAFE LANDING", "#8f8");
+
+  drawBoosterCam(ctx, w, h); // first-stage recovery inset (when active)
 }
 
 // Engine exhaust, drawn from the base (y=0) downward in the rocket's frame.

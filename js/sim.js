@@ -32,6 +32,7 @@ export function initState(rocket) {
     deployed: false,
     fairingJettisoned: false,
     orbited: false,
+    boosterRecovered: false,
     maxAlt: 0,
     maxHSpeed: 0,
     xDist: 0, // horizontal distance travelled, for star parallax

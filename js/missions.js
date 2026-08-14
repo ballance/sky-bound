@@ -7,7 +7,7 @@ export const MILESTONES = [
   { id: "orbit", name: "First Orbit", reward: 20, check: (s) => s.orbited },
   { id: "deploy", name: "First Satellite Deployed", reward: 10, check: (s) => s.deployed },
   { id: "fairing", name: "First Fairing Separation", reward: 8, check: (s) => s.fairingJettisoned },
-  { id: "landing", name: "First Booster Landing", reward: 15, check: (s) => s.status === "landed" },
+  { id: "landing", name: "First Booster Landing", reward: 15, check: (s) => s.boosterRecovered },
 ];
 
 export const MISSIONS = [
@@ -28,8 +28,8 @@ export const MISSIONS = [
   {
     id: "landBooster",
     name: "Land the Booster",
-    blurb: "Bring a rocket back down for a safe landing.",
+    blurb: "Fit landing legs and fly the first stage back onto the droneship.",
     reward: 12,
-    check: (s) => s.status === "landed",
+    check: (s) => s.boosterRecovered,
   },
 ];

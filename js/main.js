@@ -4,7 +4,7 @@ import { PARTS } from "./parts.js";
 import { MILESTONES, MISSIONS } from "./missions.js";
 import { load, save, reset } from "./store.js";
 import { initState, step, applyAction, triggerReady, simulate } from "./sim.js";
-import { drawScene, resetEffects } from "./render.js";
+import { drawScene, resetEffects, startBoosterRecovery } from "./render.js";
 import { toggleMusic } from "./music.js";
 import * as sfx from "./sfx.js";
 import { partArt, partSpecs, rocketSVG } from "./partart.js";
@@ -24,6 +24,7 @@ function normalizeRocket(partIds) {
   const stages = [];
   let probeMass = 0;
   let hasParachute = false;
+  let hasLegs = false;
   let hasFairing = false;
   let fairingMass = 0;
   let cur = null;
@@ -46,12 +47,13 @@ function normalizeRocket(partIds) {
     } else if (p.kind === "utility") {
       probeMass += p.mass;
       if (id === "parachute") hasParachute = true;
+      if (id === "legs") hasLegs = true;
     } else if (p.kind === "fairing") {
       hasFairing = true;
       fairingMass += p.mass;
     }
   }
-  return { stages, probeMass, hasParachute, hasFairing, fairingMass };
+  return { stages, probeMass, hasParachute, hasLegs, hasFairing, fairingMass };
 }
 
 function validate(rocket) {
@@ -453,7 +455,14 @@ function beginFlight(rocket) {
     // satellite the instant orbit is reached (orbit ends the sim same-tick).
     fireDue();
     // sound effects on state changes (checked before the trackers update)
-    if (sim.stageIndex > lastStageIndex) sfx.stageSep();
+    if (sim.stageIndex > lastStageIndex) {
+      sfx.stageSep();
+      // first-stage separation with legs → fly the booster back (cinematic)
+      if (sim.stageIndex === 1 && rocketNow.hasLegs && !sim.boosterRecovered) {
+        sim.boosterRecovered = true;
+        startBoosterRecovery();
+      }
+    }
     if (sim.fairingJettisoned && !lastFairing) sfx.fairing();
     if (sim.deployed && !lastDeployed) { lastDeployed = true; sfx.deploy(); }
     // engine rumble follows the throttle: on while burning, off when it cuts
