@@ -386,8 +386,11 @@ function drawPad(ctx, w, y) {
 export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0, rocketImg = null) {
   const w = ctx.canvas.width;
   const h = ctx.canvas.height;
-  // meters-per-pixel grows with altitude: fine detail near the pad, wide view high up
-  const mPerPx = 6 + Math.min(2600, state.altitude / 90);
+  // Fixed scale: the rocket lifts off, then the camera pins it near the top and
+  // scrolls the world past — so it stays on-screen at any altitude. (An earlier
+  // altitude-adaptive scale zoomed out in lock-step with the climb and made the
+  // rocket appear stuck on the pad; the camera-follow below already handles range.)
+  const mPerPx = 6;
 
   // --- camera: rocket lifts off the pad, then the camera follows it up ---
   const ceil = h * 0.35;
