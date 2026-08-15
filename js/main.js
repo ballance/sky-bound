@@ -406,8 +406,8 @@ function runCountdown(rocket, fromSec = 60) {
   };
   // show the line on screen (with a speaker style) AND speak it
   const show = (caption, cls) => { const el = $("callout"); el.textContent = caption; el.className = "callout " + cls; };
-  const dir = (spoken, caption) => { show(caption ?? `Flight Director: ${spoken}`, "flight"); sfx.speak(spoken, { pitch: 0.66, rate: 0.95 }); };
-  const call = (spoken, caption) => { show(caption ?? spoken, "announcer"); sfx.speak(spoken, { pitch: 0.72, rate: 1.0 }); };
+  const dir = (spoken, caption, clip) => { show(caption ?? `Flight Director: ${spoken}`, "flight"); sfx.speak(spoken, { pitch: 0.66, rate: 0.95, clip }); };
+  const call = (spoken, caption, clip) => { show(caption ?? spoken, "announcer"); sfx.speak(spoken, { pitch: 0.72, rate: 1.0, clip }); };
 
   for (let s = fromSec; s >= 0; s--) {
     at(s, () => {
@@ -416,47 +416,47 @@ function runCountdown(rocket, fromSec = 60) {
     });
   }
 
-  at(60, () => dir("T minus sixty seconds and counting.", "T minus 60 seconds and counting."));
+  at(60, () => dir("T minus sixty seconds and counting.", "T minus 60 seconds and counting.", "t60"));
   at(52, () => dir("All stations, this is the flight director. Stand by for go, no go for launch.",
-    "Flight Director: all stations, stand by for go / no-go for launch."));
+    "Flight Director: all stations, stand by for go / no-go for launch.", "standby"));
 
-  // flight director polls each system lead for a go
+  // flight director polls each system lead for a go (clip ids: <id>-q asks, <id>-go replies)
   const poll = [
-    { name: "Booster", reply: "Go, flight!" },
-    { name: "Guidance", reply: "Guidance is go!" },
-    { name: "Propulsion", reply: "Propulsion, go!" },
-    { name: "FIDO", say: "Fido", reply: "Fido is go!" },
-    { name: "EECOM", say: "E com", reply: "Go, flight!" },
-    { name: "Range Safety", reply: "Range is go!" },
+    { name: "Booster", id: "booster", reply: "Go, flight!" },
+    { name: "Guidance", id: "guidance", reply: "Guidance is go!" },
+    { name: "Propulsion", id: "propulsion", reply: "Propulsion, go!" },
+    { name: "FIDO", say: "Fido", id: "fido", reply: "Fido is go!" },
+    { name: "EECOM", say: "E com", id: "eecom", reply: "Go, flight!" },
+    { name: "Range Safety", id: "range", reply: "Range is go!" },
   ];
   let sec = 47;
-  for (const { name, say, reply } of poll) {
+  for (const { name, say, id, reply } of poll) {
     const q = sec;
     const r = sec - 1;
-    at(q, () => dir(`${say ?? name}?`, `Flight Director: ${name}?`));
+    at(q, () => dir(`${say ?? name}?`, `Flight Director: ${name}?`, `${id}-q`));
     at(r, () => {
       const el = $("callout");
       el.textContent = `${name.toUpperCase()}: ${reply}`;
       el.className = "callout lead";
-      sfx.speak(reply, { pitch: 0.92, rate: 1.12 });
+      sfx.speak(reply, { pitch: 0.92, rate: 1.12, clip: `${id}-go` });
     });
     sec -= 2;
   }
 
-  at(34, () => dir("Copy that. We are go for launch!", "Flight Director: we are GO for launch!"));
-  at(20, () => call("T minus twenty seconds."));
-  at(15, () => call("Guidance is internal."));
-  at(10, () => call("Ten")); at(9, () => call("nine")); at(8, () => call("eight")); at(7, () => call("seven"));
-  at(6, () => call("six. Ignition sequence start.", "Ignition sequence start."));
+  at(34, () => dir("Copy that. We are go for launch!", "Flight Director: we are GO for launch!", "go-for-launch"));
+  at(20, () => call("T minus twenty seconds.", null, "t20"));
+  at(15, () => call("Guidance is internal.", null, "guidance-internal"));
+  at(10, () => call("Ten", null, "ten")); at(9, () => call("nine", null, "nine")); at(8, () => call("eight", null, "eight")); at(7, () => call("seven", null, "seven"));
+  at(6, () => call("six. Ignition sequence start.", "Ignition sequence start.", "ignition"));
   // "Ignition sequence start" runs long (~T-6 through ~T-4); skip the spoken numbers
   // it talks over so the voice doesn't queue up and drift behind the clock. The beeps
   // and the on-screen clock still tick at 5 and 4 — only the spoken number is skipped.
-  at(3, () => call("three"));
-  at(2, () => call("two")); at(1, () => call("one"));
+  at(3, () => call("three", null, "three"));
+  at(2, () => call("two", null, "two")); at(1, () => call("one", null, "one"));
   at(0, () => {
     countdownTimers = [];
     $("clock").textContent = "T+ 00:00";
-    call("Zero. We have liftoff!", "🔥 WE HAVE LIFTOFF!");
+    call("Zero. We have liftoff!", "🔥 WE HAVE LIFTOFF!", "liftoff");
     beginFlight(rocket);
   });
 }

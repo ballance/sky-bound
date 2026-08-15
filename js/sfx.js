@@ -83,9 +83,29 @@ function ensureVoice() {
   if (vs.length) { voice = pickMale(vs); voicePicked = true; }
   else if (!synth.onvoiceschanged) synth.onvoiceschanged = () => { voice = pickMale(synth.getVoices()); voicePicked = true; };
 }
+// Sebastian's recorded voice: list the clip ids you've recorded as audio/<id>.mp3.
+// A tagged line (speak(text, {clip:"ten"})) plays audio/ten.mp3 when its id is listed
+// here; otherwise it falls back to the synthesized mission-control voice below.
+// To add his voice to a line: record audio/<id>.mp3 and add "<id>" to this set.
+const VOICE_CLIPS = new Set([
+  // e.g. "ten", "nine", "eight", "seven", "ignition", "three", "two", "one", "liftoff",
+]);
+
+let clip = null; // the currently-playing voice clip, so cancelSpeech can stop it
+function playClip(id) {
+  if (!enabled || !id || !VOICE_CLIPS.has(id)) return false;
+  try {
+    clip = new Audio(`audio/${id}.mp3`);
+    clip.volume = 1;
+    clip.play().catch(() => {}); // autoplay policies satisfied once launch is clicked
+    return true;
+  } catch { return false; }
+}
+
 // Degrades silently where speechSynthesis or voices are unavailable.
-export function speak(text, { rate = 0.95, pitch = 0.7 } = {}) {
+export function speak(text, { rate = 0.95, pitch = 0.7, clip: clipId = null } = {}) {
   if (!enabled) return;
+  if (playClip(clipId)) return; // Sebastian's voice for this line, when recorded
   try {
     const synth = window.speechSynthesis;
     if (!synth) return;
@@ -100,6 +120,7 @@ export function speak(text, { rate = 0.95, pitch = 0.7 } = {}) {
 }
 export function cancelSpeech() {
   try { window.speechSynthesis?.cancel(); } catch { /* ignore */ }
+  try { if (clip) { clip.pause(); clip = null; } } catch { /* ignore */ }
 }
 
 // A loud, sustained engine rumble: filtered noise + a sub-bass tone, held on

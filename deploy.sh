@@ -14,7 +14,9 @@ aws s3 sync . "s3://$BUCKET" \
   --include "index.html" \
   --include "css/*" \
   --include "js/*" \
-  --exclude "js/*.test.js"
+  --include "audio/*" \
+  --exclude "js/*.test.js" \
+  --exclude "audio/README.md"
 
 echo "Invalidating CloudFront cache..."
 DISTRIBUTION_ID=$(cd infra && terraform output -raw cloudfront_distribution_id)
