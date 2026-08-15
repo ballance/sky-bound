@@ -53,6 +53,7 @@ export function initState(rocket) {
     reentering: false,
     chuteOpen: false,
     noseTemp: 15, // °C, aerodynamic heating of the nose cone
+    crashReason: null, // set to "maxq" when a Max-Q overstress RUD ends the flight
     maxAlt: 0,
     maxHSpeed: 0,
     xDist: 0, // horizontal distance travelled, for star parallax
@@ -153,6 +154,7 @@ export function step(state, dt, cfg = CONFIG, rocket) {
   else state.overStressT = Math.max(0, state.overStressT - dt * 2); // recovers at 2x
   if (state.status === "flying" && (state.overStressT >= cfg.MAXQ_RUD_SECONDS || state.noseTemp >= cfg.NOSE_TEMP_LIMIT)) {
     state.status = "crashed"; // rapid unplanned disassembly
+    state.crashReason = "maxq"; // broke apart under aerodynamic overstress
     return state;
   }
 

@@ -612,6 +612,7 @@ function awardResults(finalState) {
 
   const head =
     finalState.status === "aborted" ? "💥 Rapid Unscheduled Disassembly! (You hit ABORT.)" :
+    finalState.status === "crashed" && finalState.crashReason === "maxq" ? "💥 Broke apart at Max-Q — ease the throttle next time!" :
     finalState.status === "crashed" ? "💥 Crashed — try more fuel or a parachute." :
     finalState.orbited ? "🛰️ You reached ORBIT! Coasting around…" :
     finalState.status === "landed" ? "🪂 Safe landing!" :
