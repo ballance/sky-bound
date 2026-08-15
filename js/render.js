@@ -137,6 +137,8 @@ function drawBoosterCam(ctx, w, h) {
     by = landY;
   }
   const landed = cam.t >= LAND;
+  // clear the cam 15 seconds after a successful landing (~60fps → 900 frames)
+  if (landed && cam.t >= LAND + 900) { boosterCam = null; return; }
   drawMiniBooster(ctx, mx, by, cam.t > 168 && !landed, cam.t > LAND - 60, cam.t);
   if (cam.t >= LAND - 4 && cam.t < LAND + 50) { // touchdown dust
     const a = 1 - (cam.t - (LAND - 4)) / 54;
@@ -152,22 +154,22 @@ function drawBoosterCam(ctx, w, h) {
   ctx.save();
   ctx.fillStyle = "rgba(0,0,0,0.55)";
   ctx.fillRect(px, py, pw, 16);
-  ctx.fillStyle = cam.t % 40 < 20 ? "#ff5a5a" : "#9fd4ff";
-  ctx.font = "bold 9px system-ui, sans-serif";
+  ctx.fillStyle = "#9fb0c8"; // steady, calm label (no strobing)
+  ctx.font = "9px system-ui, sans-serif";
   ctx.textAlign = "left";
   ctx.fillText("● BOOSTER CAM", px + 6, py + 11);
   if (landed) {
-    ctx.fillStyle = "#37d67a";
-    ctx.font = "bold 13px system-ui, sans-serif";
+    ctx.fillStyle = "#7fb79a"; // muted green
+    ctx.font = "11px system-ui, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("✓ RECOVERED", px + pw / 2, py + 15 + (ph - 15) / 2 + 4);
+    ctx.fillText("✓ Recovered", px + pw / 2, py + 15 + (ph - 15) / 2 + 4);
   }
   ctx.strokeStyle = "#33407a";
   ctx.lineWidth = 1.5;
   roundRect(ctx, px, py, pw, ph, 10);
   ctx.stroke();
   ctx.restore();
-  // the cam stays up (showing ✓ RECOVERED) for the rest of the flight; cleared on reset
+  // the cam shows "✓ Recovered", then clears itself 15s after touchdown (or on reset)
 }
 
 // A released satellite: body, dish, and solar panels that unfold after deploy.
@@ -461,7 +463,7 @@ export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0, rocketImg
     ctx.save();
     ctx.translate(w / 2, rocketY);
     ctx.rotate(tilt);
-    if (thrusting) drawFlame(ctx, frame);
+    if (thrusting) drawFlame(ctx, frame, dw);
     ctx.drawImage(rocketImg, -dw / 2, -dh, dw, dh); // engine base sits at y=0
     ctx.restore();
   }
@@ -519,15 +521,17 @@ export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0, rocketImg
 }
 
 // Engine exhaust, drawn from the base (y=0) downward in the rocket's frame.
-function drawFlame(ctx, frame) {
+function drawFlame(ctx, frame, dw = 32) {
   const flick = 0.7 + 0.3 * Math.sin(frame * 0.9);
   const len = (22 * flick + (frame % 3)) * 3; // 3x longer plume
+  const outer = dw * 0.22; // emerge from the nozzle, never wider than the rocket
+  const inner = outer * 0.55;
   ctx.fillStyle = "#ffd24a";
   ctx.beginPath();
-  ctx.moveTo(-16, 0); ctx.lineTo(16, 0); ctx.lineTo(0, len); ctx.closePath(); ctx.fill();
+  ctx.moveTo(-outer, 0); ctx.lineTo(outer, 0); ctx.lineTo(0, len); ctx.closePath(); ctx.fill();
   ctx.fillStyle = "#ff7a2a";
   ctx.beginPath();
-  ctx.moveTo(-9, 0); ctx.lineTo(9, 0); ctx.lineTo(0, len * 0.6); ctx.closePath(); ctx.fill();
+  ctx.moveTo(-inner, 0); ctx.lineTo(inner, 0); ctx.lineTo(0, len * 0.6); ctx.closePath(); ctx.fill();
 }
 
 // A swaying parachute canopy above the descending stage (nose at topY).
