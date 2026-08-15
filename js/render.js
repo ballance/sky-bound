@@ -524,14 +524,21 @@ export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0, rocketImg
 function drawFlame(ctx, frame, dw = 32) {
   const flick = 0.7 + 0.3 * Math.sin(frame * 0.9);
   const len = (22 * flick + (frame % 3)) * 3; // 3x longer plume
-  const outer = dw * 0.22; // emerge from the nozzle, never wider than the rocket
+  const outer = dw * 0.22; // base stays within the nozzle...
   const inner = outer * 0.55;
+  // ...but the plume licks asymmetrically: each base edge wavers on its own phase
+  // and the tip sways side to side, so it reads as live exhaust, not a static cone.
+  const lW = outer * (0.9 + 0.18 * Math.sin(frame * 0.7));
+  const rW = outer * (0.9 + 0.18 * Math.sin(frame * 0.7 + 2.3));
+  const tipX = Math.sin(frame * 0.5) * outer * 0.45 + Math.sin(frame * 1.7) * outer * 0.2;
   ctx.fillStyle = "#ffd24a";
   ctx.beginPath();
-  ctx.moveTo(-outer, 0); ctx.lineTo(outer, 0); ctx.lineTo(0, len); ctx.closePath(); ctx.fill();
+  ctx.moveTo(-lW, 0); ctx.lineTo(rW, 0); ctx.lineTo(tipX, len); ctx.closePath(); ctx.fill();
   ctx.fillStyle = "#ff7a2a";
+  const liW = inner * (0.9 + 0.18 * Math.sin(frame * 1.1 + 1));
+  const riW = inner * (0.9 + 0.18 * Math.sin(frame * 0.9));
   ctx.beginPath();
-  ctx.moveTo(-inner, 0); ctx.lineTo(inner, 0); ctx.lineTo(0, len * 0.6); ctx.closePath(); ctx.fill();
+  ctx.moveTo(-liW, 0); ctx.lineTo(riW, 0); ctx.lineTo(tipX * 0.6, len * 0.6); ctx.closePath(); ctx.fill();
 }
 
 // A swaying parachute canopy above the descending stage (nose at topY).
