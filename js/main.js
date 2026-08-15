@@ -265,6 +265,7 @@ function renderMissions() {
 let anim = null;
 let sim = null;
 let rocketNow = null;
+let maxQCalled = false, throttleUpCalled = false;
 let mode = "auto";
 let stepIdx = 0;
 let prevFireT = 0;
@@ -350,6 +351,12 @@ function updateHUD() {
   const stage = rocketNow.stages[s.stageIndex];
   const pct = stage ? (s.fuel / stage.fuel) * 100 : 0;
   $("tFuel").style.width = `${Math.max(0, pct)}%`;
+  const stress = s.aeroStress || 0;
+  const st = $("tStress");
+  st.style.width = `${Math.min(100, stress * 100)}%`;
+  st.style.background = stress > 1 ? "#ff5252" : stress > 0.75 ? "#ffb020" : "#37d67a";
+  // Manual pilots get a loud warning while over the limit
+  $("maxqWarn").textContent = !s.autoThrottle && stress > 1 ? "⚠️ EASE OFF THE THROTTLE!" : "";
 }
 
 function renderChecklist(done) {
@@ -456,6 +463,7 @@ function beginFlight(rocket) {
   rocketNow = rocket;
   sim = initState(rocket);
   sim.autoThrottle = mode === "auto";
+  maxQCalled = false; throttleUpCalled = false;
   sim.status = "flying";
   stepIdx = 0; prevFireT = 0; frame = 0;
   lastStageIndex = 0;
@@ -504,6 +512,13 @@ function beginFlight(rocket) {
     // final sweep so end-of-flight triggers still fire — e.g. release the
     // satellite the instant orbit is reached (orbit ends the sim same-tick).
     fireDue();
+    if (!maxQCalled && sim.aeroStress > 0.8 && sim.altitude > 4000) {
+      maxQCalled = true;
+      const c = $("callout"); c.textContent = "🔺 MAX-Q"; c.className = "callout";
+    } else if (maxQCalled && !throttleUpCalled && sim.maxQ > 0 && sim.aeroStress < 0.4 && sim.altitude > 12000) {
+      throttleUpCalled = true;
+      const c = $("callout"); c.textContent = "🚀 GO AT THROTTLE UP"; c.className = "callout";
+    }
     // sound effects on state changes (checked before the trackers update)
     if (sim.stageIndex > lastStageIndex) {
       sfx.stageSep();
