@@ -16,6 +16,10 @@ export const CONFIG = {
   RHO0: 1.225,
   H_ATM: 8500,
   CDA: 0.9, // drag coefficient x reference area (tuned)
+  // Aerodynamic nose heating: convective proxy ~ sqrt(rho) * v^3 (Sutton-Graves-like),
+  // which peaks in the upper atmosphere (~25-40 km) as the rocket goes hypersonic,
+  // not at max-Q. Tuned so a real ascent peaks a few hundred °C. (calibration knob)
+  NOSE_HEAT_K: 3.8e-6,
   // Max-Q dynamic-pressure mechanic
   Q_MAX: 40_000,          // structural dynamic-pressure limit (Pa) — stress = q / Q_MAX
   BUCKET_STRESS: 0.9,     // Auto eases the throttle when stress exceeds this

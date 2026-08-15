@@ -209,4 +209,22 @@ import { initState as _initState, step as _step } from "./sim.js";
   assert.ok(Math.abs(s.throttleTarget - 1) < 1e-9, "throttleUp restores full throttle");
 }
 
+// Aeroheating peaks HIGH in the ascent (hypersonic, ~25-40 km), not at max-Q, and
+// reaches a realistic few-hundred °C — hot enough to glow, below the RUD limit.
+{
+  const sr = normalize(STARTER_ROCKET);
+  const st = _initState(sr); st.status = "flying"; st.autoThrottle = true;
+  let peak = 0, peakAlt = 0, si = 0, pf = 0;
+  while (st.status === "flying" && st.t < 1200) {
+    while (si < goodPlan.length && triggerReady(goodPlan[si].trigger, st, pf)) { applyAction(st, goodPlan[si].action, sr); pf = st.t; si++; }
+    _step(st, CONFIG.DT, CONFIG, sr);
+    if (st.noseTemp > peak) { peak = st.noseTemp; peakAlt = st.altitude; }
+    if (st.orbited) break;
+  }
+  console.log(`noseheat: peak ${peak.toFixed(0)}C at ${(peakAlt / 1000).toFixed(0)}km`);
+  assert.ok(peakAlt > 20000 && peakAlt < 45000, `nose heating should peak high in the ascent (20-45km), got ${(peakAlt / 1000).toFixed(0)}km`);
+  assert.ok(peak > 400 && peak < CONFIG.NOSE_TEMP_LIMIT, `peak nose temp ${peak.toFixed(0)}C should be a few hundred degrees, below the RUD limit`);
+  assert.ok(st.orbited, "the starter still reaches orbit without a heat RUD");
+}
+
 console.log("ok — starter reaches real circular orbit, liftoff is gradual, underpowered rockets fall short");

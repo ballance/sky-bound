@@ -147,7 +147,10 @@ export function step(state, dt, cfg = CONFIG, rocket) {
   const q = 0.5 * dense * cfg.RHO0 * speed * speed;
   state.aeroStress = q / cfg.Q_MAX;
   if (q > state.maxQ) { state.maxQ = q; state.maxQAlt = state.altitude; }
-  const heatTarget = 15 + dense * speed * speed * 7.5e-4 + Math.max(0, state.aeroStress - 1) * cfg.OVERSTRESS_HEAT;
+  // convective aeroheating ~ sqrt(rho) * v^3 (rho = real air density) peaks high up
+  // as the rocket goes hypersonic (not at max-Q), plus a spike when over the
+  // structural stress limit. Using real rho means no air (RHO0=0) => no heating.
+  const heatTarget = 15 + Math.sqrt(cfg.RHO0 * dense) * speed * speed * speed * cfg.NOSE_HEAT_K + Math.max(0, state.aeroStress - 1) * cfg.OVERSTRESS_HEAT;
   state.noseTemp += (heatTarget - state.noseTemp) * Math.min(1, 0.6 * dt);
   // time spent over the Max-Q limit; ease off in time (it cools) or the airframe fails
   if (state.aeroStress > 1) state.overStressT += dt;
