@@ -447,10 +447,11 @@ function runCountdown(rocket, fromSec = 60) {
   at(20, () => call("T minus twenty seconds.", null, "t20"));
   at(15, () => call("Guidance is internal.", null, "guidance-internal"));
   at(10, () => call("Ten", null, "ten")); at(9, () => call("nine", null, "nine")); at(8, () => call("eight", null, "eight")); at(7, () => call("seven", null, "seven"));
-  at(6, () => call("six. Ignition sequence start.", "Ignition sequence start.", "ignition"));
-  // "Ignition sequence start" runs long (~T-6 through ~T-4); skip the spoken numbers
-  // it talks over so the voice doesn't queue up and drift behind the clock. The beeps
-  // and the on-screen clock still tick at 5 and 4 — only the spoken number is skipped.
+  at(6, () => call("six", null, "six"));
+  // "Ignition sequence start" (~1.8s) plays across the 5 and 4 beats — their spoken
+  // numbers are skipped so the count stays in sync and lands back on "three". The
+  // beeps and the on-screen clock still tick at 5 and 4.
+  at(5, () => call("Ignition sequence start.", "Ignition sequence start.", "ignition"));
   at(3, () => call("three", null, "three"));
   at(2, () => call("two", null, "two")); at(1, () => call("one", null, "one"));
   at(0, () => {

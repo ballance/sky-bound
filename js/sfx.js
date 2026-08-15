@@ -88,7 +88,7 @@ function ensureVoice() {
 // here; otherwise it falls back to the synthesized mission-control voice below.
 // To add his voice to a line: record audio/<id>.mp3 and add "<id>" to this set.
 const VOICE_CLIPS = new Set([
-  // e.g. "ten", "nine", "eight", "seven", "ignition", "three", "two", "one", "liftoff",
+  "ten", "nine", "eight", "seven", "six", "ignition", "three", "two", "one", "liftoff",
 ]);
 const CLIP_EXT = "wav"; // file format of the recordings — "wav" or "mp3" (both play fine)
 
