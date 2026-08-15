@@ -88,7 +88,14 @@ export function step(state, dt, cfg = CONFIG, rocket) {
   const thrusting = state.engineOn && stage && state.fuel > 0;
   // spool the throttle toward full while firing; thrust and fuel burn both
   // scale with it, so a real gradual liftoff costs no extra fuel.
-  if (thrusting) state.throttle = Math.min(1, state.throttle + dt / cfg.THROTTLE_RAMP);
+  if (thrusting) {
+    // Auto flies the Max-Q bucket automatically; Manual uses the player's target.
+    const target = state.autoThrottle
+      ? (state.aeroStress > cfg.BUCKET_STRESS ? cfg.BUCKET_THROTTLE : 1)
+      : state.throttleTarget;
+    const rate = dt / cfg.THROTTLE_RAMP;
+    state.throttle = clamp(state.throttle + clamp(target - state.throttle, -rate, rate), 0, 1);
+  }
   const F = thrusting ? stage.thrust * state.throttle : 0;
   if (thrusting) {
     const mdot = stage.thrust / stage.ve; // rocket equation mass flow

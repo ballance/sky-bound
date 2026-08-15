@@ -141,4 +141,17 @@ import { initState as _initState, step as _step } from "./sim.js";
     `Max-Q altitude ${(pq.final.maxQAlt/1000).toFixed(1)}km should be in the lower atmosphere`);
 }
 
+// Auto governor eases the throttle when aero stress is high; Manual holds it
+{
+  const r = { probeMass: 0, hasParachute: false, stages: [{ thrust: 1e6, ve: 3000, dryMass: 1000, fuel: 9000 }] };
+  // AUTO: high stress -> throttle drops below full
+  const a = _initState(r); a.status = "flying"; a.engineOn = true; a.throttle = 1; a.autoThrottle = true; a.aeroStress = 0.95;
+  _step(a, 0.1, CONFIG, r);
+  assert.ok(a.throttle < 1, "Auto should throttle down when stress is high");
+  // MANUAL: same stress, autoThrottle off, target full -> throttle stays full
+  const m = _initState(r); m.status = "flying"; m.engineOn = true; m.throttle = 1; m.autoThrottle = false; m.throttleTarget = 1; m.aeroStress = 0.95;
+  _step(m, 0.1, CONFIG, r);
+  assert.ok(Math.abs(m.throttle - 1) < 1e-9, "Manual full throttle should stay full regardless of stress");
+}
+
 console.log("ok — starter reaches real circular orbit, liftoff is gradual, underpowered rockets fall short");
