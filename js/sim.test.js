@@ -199,4 +199,14 @@ import { initState as _initState, step as _step } from "./sim.js";
   assert.ok(ok.status !== "crashed", "sub-limit stress should not RUD");
 }
 
+// Manual throttle actions set the throttle target
+{
+  const r = { probeMass: 0, hasParachute: false, stages: [{ thrust: 1e6, ve: 3000, dryMass: 1000, fuel: 9000 }] };
+  const s = _initState(r);
+  applyAction(s, "throttleDown", r);
+  assert.ok(Math.abs(s.throttleTarget - CONFIG.BUCKET_THROTTLE) < 1e-9, "throttleDown sets bucket throttle");
+  applyAction(s, "throttleUp", r);
+  assert.ok(Math.abs(s.throttleTarget - 1) < 1e-9, "throttleUp restores full throttle");
+}
+
 console.log("ok — starter reaches real circular orbit, liftoff is gradual, underpowered rockets fall short");

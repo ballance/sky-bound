@@ -187,6 +187,8 @@ export function applyAction(state, action, rocket) {
   else if (action === "deploy") state.deployed = true;
   else if (action === "jettisonFairing") state.fairingJettisoned = true;
   else if (action === "reenter") state.reentering = true;
+  else if (action === "throttleDown") state.throttleTarget = CONFIG.BUCKET_THROTTLE;
+  else if (action === "throttleUp") state.throttleTarget = 1;
   else if (action === "dropStage") {
     if (state.stageIndex < rocket.stages.length - 1) {
       state.stageIndex += 1;

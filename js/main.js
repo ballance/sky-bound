@@ -455,6 +455,7 @@ function beginFlight(rocket) {
   plan = autoPlan(rocket, $("deployToggle").checked);
   rocketNow = rocket;
   sim = initState(rocket);
+  sim.autoThrottle = mode === "auto";
   sim.status = "flying";
   stepIdx = 0; prevFireT = 0; frame = 0;
   lastStageIndex = 0;
