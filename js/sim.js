@@ -56,6 +56,12 @@ export function initState(rocket) {
     maxAlt: 0,
     maxHSpeed: 0,
     xDist: 0, // horizontal distance travelled, for star parallax
+    aeroStress: 0, // dynamic pressure / Q_MAX (1 = structural limit)
+    maxQ: 0, // peak dynamic pressure seen (Pa)
+    maxQAlt: 0, // altitude of peak dynamic pressure (m)
+    overStressT: 0, // seconds spent over the Max-Q limit
+    autoThrottle: true, // Auto flies the throttle bucket; Manual pilots it
+    throttleTarget: 1, // throttle the engine ramps toward (Manual sets this)
   };
 }
 
@@ -129,6 +135,10 @@ export function step(state, dt, cfg = CONFIG, rocket) {
   // nose-cone temperature: heating from speed through the air, with thermal lag
   const speed = Math.hypot(state.vSpeed, state.hSpeed);
   const dense = Math.exp(-Math.max(0, state.altitude) / cfg.H_ATM); // real air-density ratio
+  // dynamic pressure q = 1/2 rho v^2 (rho = dense * RHO0); stress vs the structural limit
+  const q = 0.5 * dense * cfg.RHO0 * speed * speed;
+  state.aeroStress = q / cfg.Q_MAX;
+  if (q > state.maxQ) { state.maxQ = q; state.maxQAlt = state.altitude; }
   const heatTarget = 15 + dense * speed * speed * 7.5e-4;
   state.noseTemp += (heatTarget - state.noseTemp) * Math.min(1, 0.6 * dt);
 

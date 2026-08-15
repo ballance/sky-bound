@@ -127,4 +127,18 @@ import { initState as _initState, step as _step } from "./sim.js";
   assert.ok(orbitElements(st2, CONFIG).apo > 260000, "faster than circular raises apoapsis");
 }
 
+// Max-Q: dynamic pressure peaks in the lower atmosphere, not on the pad or in space
+{
+  const good2 = normalize(STARTER_ROCKET);
+  const plan2 = [
+    { trigger: { type: "T", s: 0 }, action: "fire" },
+    { trigger: { type: "fuelEmpty" }, action: "dropStage" },
+    { trigger: { type: "then" }, action: "fire" },
+  ];
+  const pq = profile(good2, plan2);
+  assert.ok(pq.final.maxQ > 0, "maxQ should be recorded during ascent");
+  assert.ok(pq.final.maxQAlt > 3000 && pq.final.maxQAlt < 30000,
+    `Max-Q altitude ${(pq.final.maxQAlt/1000).toFixed(1)}km should be in the lower atmosphere`);
+}
+
 console.log("ok — starter reaches real circular orbit, liftoff is gradual, underpowered rockets fall short");

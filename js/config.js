@@ -16,6 +16,13 @@ export const CONFIG = {
   RHO0: 1.225,
   H_ATM: 8500,
   CDA: 0.9, // drag coefficient x reference area (tuned)
+  // Max-Q dynamic-pressure mechanic
+  Q_MAX: 40_000,          // structural dynamic-pressure limit (Pa) — stress = q / Q_MAX
+  BUCKET_STRESS: 0.9,     // Auto eases the throttle when stress exceeds this
+  BUCKET_THROTTLE: 0.65,  // throttle setting inside the Max-Q bucket
+  OVERSTRESS_HEAT: 1_500, // °C added to heat target per unit of stress over 1
+  MAXQ_RUD_SECONDS: 4,    // seconds over the limit before the airframe lets go
+  NOSE_TEMP_LIMIT: 1_200, // °C airframe temperature that triggers a RUD
   // Orbit insertion: tangential speed >= vCirc, above this altitude
   ORBIT_MARGIN_ALT: 140_000,
   DV_TO_ORBIT: 9400, // build-screen "can reach orbit" threshold
