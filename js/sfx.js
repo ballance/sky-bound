@@ -90,12 +90,13 @@ function ensureVoice() {
 const VOICE_CLIPS = new Set([
   // e.g. "ten", "nine", "eight", "seven", "ignition", "three", "two", "one", "liftoff",
 ]);
+const CLIP_EXT = "wav"; // file format of the recordings — "wav" or "mp3" (both play fine)
 
 let clip = null; // the currently-playing voice clip, so cancelSpeech can stop it
 function playClip(id) {
   if (!enabled || !id || !VOICE_CLIPS.has(id)) return false;
   try {
-    clip = new Audio(`audio/${id}.mp3`);
+    clip = new Audio(`audio/${id}.${CLIP_EXT}`);
     clip.volume = 1;
     clip.play().catch(() => {}); // autoplay policies satisfied once launch is clicked
     return true;

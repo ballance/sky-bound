@@ -1,14 +1,19 @@
 # Sebastian's countdown voice
 
-Drop recorded clips here as `audio/<id>.mp3`, then add each `<id>` to the
+Drop recorded clips here as `audio/<id>.wav`, then add each `<id>` to the
 `VOICE_CLIPS` set in `js/sfx.js`. A countdown line plays Sebastian's clip when its
 id is listed; any line without a clip falls back to the synthesized voice. So you
 can record just the fun terminal count first and add the rest whenever.
 
+Format: WAV and MP3 both play fine in browsers. The loader uses `CLIP_EXT` in
+`js/sfx.js` (currently `"wav"`) — record everything in one format and set that
+constant to match (`"wav"` or `"mp3"`). WAV is simplest (no conversion); MP3 is
+~10× smaller if you'd rather keep the download light.
+
 ## How to add a clip
 1. Record the line (phone voice memo is fine). Keep it short; trim the silence.
-2. Save/convert it as `audio/<id>.mp3` using the id from the tables below.
-3. Add `"<id>"` to the `VOICE_CLIPS` set in `js/sfx.js`.
+2. Save it as `audio/<id>.wav` (or `.mp3`) using the id from the tables below.
+3. Add `"<id>"` to the `VOICE_CLIPS` set in `js/sfx.js` (and set `CLIP_EXT` to your format).
 4. `./deploy.sh` — the `audio/` folder now ships (README excluded).
 
 Tips: mono, keep each clip under ~2 seconds (except the longer director lines),
