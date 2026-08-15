@@ -137,8 +137,10 @@ function drawBoosterCam(ctx, w, h) {
     by = landY;
   }
   const landed = cam.t >= LAND;
-  // clear the cam 15 seconds after a successful landing (~60fps → 900 frames)
-  if (landed && cam.t >= LAND + 900) { boosterCam = null; return; }
+  // clear the cam 15 seconds after a successful landing (~60fps → 900 frames).
+  // Must restore() first — we're inside the save()+clip() from above; returning
+  // without it would leave the inset clip stuck on the canvas and freeze the scene.
+  if (landed && cam.t >= LAND + 900) { boosterCam = null; ctx.restore(); return; }
   drawMiniBooster(ctx, mx, by, cam.t > 168 && !landed, cam.t > LAND - 60, cam.t);
   if (cam.t >= LAND - 4 && cam.t < LAND + 50) { // touchdown dust
     const a = 1 - (cam.t - (LAND - 4)) / 54;
