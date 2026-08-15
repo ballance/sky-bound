@@ -84,6 +84,37 @@ assert.ok(dvBudget(good) >= CONFIG.DV_TO_ORBIT, `starter delta-v ${dvBudget(good
 assert(twr < 3.2, `liftoff TWR ${twr.toFixed(2)} too high — should lift off slowly like a real rocket`);
 assert(p.t1km != null && p.t1km >= 4, `cleared 1km in ${p.t1km}s — still leaping off the pad`);
 
+// Max-Q under real flight: Auto is safe and orbits; full throttle is fatal; easing off survives.
+{
+  const sr = normalize(STARTER_ROCKET); // read-only in step(); safe to share across runs
+  const autoRun = simulate(normalize(STARTER_ROCKET), goodPlan, CONFIG);
+  assert.ok(autoRun.orbited, "Auto (governed) starter still reaches orbit");
+  // Auto never exceeds the structural limit (track peak stress over a governed flight)
+  const gov = _initState(sr); gov.status = "flying"; gov.autoThrottle = true;
+  let peak = 0, si = 0, pf = 0;
+  while (gov.status === "flying" && gov.t < 1200) {
+    while (si < goodPlan.length && triggerReady(goodPlan[si].trigger, gov, pf)) { applyAction(gov, goodPlan[si].action, sr); pf = gov.t; si++; }
+    _step(gov, CONFIG.DT, CONFIG, sr);
+    if (gov.aeroStress > peak) peak = gov.aeroStress;
+  }
+  console.log(`maxQ: autoPeakStress ${peak.toFixed(2)} orbited ${gov.orbited}`);
+  assert.ok(peak < 1, `Auto peak stress ${peak.toFixed(2)} must stay under the limit`);
+  // full throttle (no governor, target pinned to 1) RUDs during the low-altitude ascent
+  const full = _initState(sr); full.status = "flying"; full.autoThrottle = false; full.throttleTarget = 1; full.engineOn = true;
+  let fullCrashed = false;
+  for (let i = 0; i < 100000 && full.status === "flying" && full.altitude < 40000; i++) {
+    _step(full, CONFIG.DT, CONFIG, sr); if (full.status === "crashed") { fullCrashed = true; break; }
+  }
+  assert.ok(fullCrashed, "full-throttle ascent through Max-Q must RUD below 40 km");
+  // easing to the bucket the whole way keeps stress sub-limit → no RUD through Max-Q
+  const eased = _initState(sr); eased.status = "flying"; eased.autoThrottle = false; eased.throttleTarget = CONFIG.BUCKET_THROTTLE; eased.engineOn = true;
+  let easedCrashed = false;
+  for (let i = 0; i < 100000 && eased.status === "flying" && eased.altitude < 40000; i++) {
+    _step(eased, CONFIG.DT, CONFIG, sr); if (eased.status === "crashed") { easedCrashed = true; break; }
+  }
+  assert.ok(!easedCrashed, "easing to the bucket through Max-Q avoids the RUD");
+}
+
 // underpowered: one small engine + one tank cannot make orbit
 assert.ok(!simulate(normalize(["smallEngine", "tank", "probe"]), goodPlan, CONFIG).orbited, "underpowered rocket must not orbit");
 // no fuel: an engine with no tank can never thrust, so it can never orbit

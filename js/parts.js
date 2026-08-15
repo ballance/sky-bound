@@ -3,7 +3,7 @@
 export const PARTS = {
   bigEngine: {
     id: "bigEngine", name: "Big Engine", kind: "engine", icon: "🔥",
-    thrust: 900_000, ve: 3000, mass: 3_000,
+    thrust: 1_060_000, ve: 3000, mass: 3_000,
     blurb: "Lots of push, drinks fuel fast.",
   },
   smallEngine: {
