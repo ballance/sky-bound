@@ -154,4 +154,18 @@ import { initState as _initState, step as _step } from "./sim.js";
   assert.ok(Math.abs(m.throttle - 1) < 1e-9, "Manual full throttle should stay full regardless of stress");
 }
 
+// Overstress heats the airframe and, if sustained, causes a RUD; safe stress does not
+{
+  const r = { probeMass: 0, hasParachute: false, stages: [{ thrust: 0, ve: 3000, dryMass: 1000, fuel: 0 }] };
+  // dangerous: fast and low -> stress >> 1
+  const bad = _initState(r); bad.status = "flying"; bad.altitude = 10000; bad.hSpeed = 1000;
+  let crashed = false;
+  for (let i = 0; i < 200; i++) { _step(bad, 0.1, CONFIG, r); if (bad.status === "crashed") { crashed = true; break; } }
+  assert.ok(crashed, "sustained overstress should RUD");
+  // safe: slow and low -> stress < 1, survives
+  const ok = _initState(r); ok.status = "flying"; ok.altitude = 10000; ok.hSpeed = 200;
+  for (let i = 0; i < 200; i++) _step(ok, 0.1, CONFIG, r);
+  assert.ok(ok.status !== "crashed", "sub-limit stress should not RUD");
+}
+
 console.log("ok — starter reaches real circular orbit, liftoff is gradual, underpowered rockets fall short");

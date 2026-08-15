@@ -146,8 +146,15 @@ export function step(state, dt, cfg = CONFIG, rocket) {
   const q = 0.5 * dense * cfg.RHO0 * speed * speed;
   state.aeroStress = q / cfg.Q_MAX;
   if (q > state.maxQ) { state.maxQ = q; state.maxQAlt = state.altitude; }
-  const heatTarget = 15 + dense * speed * speed * 7.5e-4;
+  const heatTarget = 15 + dense * speed * speed * 7.5e-4 + Math.max(0, state.aeroStress - 1) * cfg.OVERSTRESS_HEAT;
   state.noseTemp += (heatTarget - state.noseTemp) * Math.min(1, 0.6 * dt);
+  // time spent over the Max-Q limit; ease off in time (it cools) or the airframe fails
+  if (state.aeroStress > 1) state.overStressT += dt;
+  else state.overStressT = Math.max(0, state.overStressT - dt * 2); // recovers at 2x
+  if (state.status === "flying" && (state.overStressT >= cfg.MAXQ_RUD_SECONDS || state.noseTemp >= cfg.NOSE_TEMP_LIMIT)) {
+    state.status = "crashed"; // rapid unplanned disassembly
+    return state;
+  }
 
   state.maxAlt = Math.max(state.maxAlt, state.altitude);
   state.maxHSpeed = Math.max(state.maxHSpeed, state.hSpeed);
