@@ -570,6 +570,7 @@ function beginFlight(rocket) {
   view = "ascent"; orbitState = null; satState = null; orbitPhase = "coast"; orbitLap = 0;
   $("orbitHud").hidden = true;
   $("orbitControls").hidden = true;
+  $("hardControls").hidden = mode !== "manual"; // enterOrbitView hides it; restore per mode
   document.querySelector(".hud .telemetry:not(#orbitHud)").hidden = false;
   rebuildAscentWarpButtons();
   $("warp").querySelectorAll("button").forEach((x) => x.classList.toggle("active", x.dataset.warp === "1"));
