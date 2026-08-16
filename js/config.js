@@ -12,6 +12,14 @@ export const CONFIG = {
   G0: 9.80665,
   R_EARTH: 6.371e6,
   GM: 3.986e14,
+  // Orbit view (phase 2)
+  ORBIT_DT: 2,               // velocity-Verlet sub-step (s) — period ~5300s
+  BURN_DV: 100,              // m/s applied per prograde/retrograde burn
+  ORBIT_WARP_TIERS: [1, 100, 1000],
+  ATM_ENTRY_ALT: 120_000,    // altitude where re-entry takes over
+  EARTH_PX: 90,              // Earth disc radius on the map (px)
+  ALT_REF: 200_000,          // reference altitude for the exaggerated mapping
+  ORBIT_GAP: 60,             // px added at ALT_REF altitude (readability)
   // Atmosphere (exponential) and drag
   RHO0: 1.225,
   H_ATM: 8500,
