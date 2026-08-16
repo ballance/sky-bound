@@ -8,6 +8,8 @@ import { drawScene, resetEffects, startBoosterRecovery } from "./render.js";
 import { toggleMusic } from "./music.js";
 import * as sfx from "./sfx.js";
 import { partArt, partSpecs, rocketSVG } from "./partart.js";
+import * as orbit from "./orbit.js";
+import { drawOrbit } from "./orbitRender.js";
 
 let game = load();
 let build = []; // ordered { id, fuel } items, bottom -> top (fuel only for tanks/boosters)
@@ -265,6 +267,11 @@ function renderMissions() {
 let anim = null;
 let sim = null;
 let rocketNow = null;
+let view = "ascent";      // "ascent" | "orbit" | "reentry"
+let orbitState = null;
+let satState = null;
+let orbitPhase = "coast"; // "coast" | "deploy" | "deorbit" | "done"
+let orbitLap = 0;
 let maxQCalled = false, throttleUpCalled = false;
 let mode = "auto";
 let stepIdx = 0;
@@ -462,6 +469,40 @@ function runCountdown(rocket, fromSec = 60) {
   });
 }
 
+function enterOrbitView() {
+  view = "orbit";
+  orbitState = orbit.seedFromAscent(sim, rocketNow, CONFIG);
+  satState = null; orbitPhase = "coast"; orbitLap = 0;
+  warp = 1;
+  setOrbitWarpButtons();
+  setHardEnabled(mode === "manual");
+  const c = $("callout"); c.textContent = "🛰️ You're in orbit!"; c.className = "callout";
+}
+
+function orbitFrame(realDt) {
+  let simDt = realDt * warp;
+  while (simDt > 0) {
+    const dt = Math.min(CONFIG.ORBIT_DT, simDt);
+    orbit.step(orbitState, dt, CONFIG);
+    if (satState) orbit.step(satState, dt, CONFIG);
+    orbitLap += dt;
+    autoOrbitSequence(dt);
+    simDt -= dt;
+  }
+  handleDeorbitHandoff();
+  if (view !== "orbit") { anim = requestAnimationFrame(loopFn); return; }
+  frame++;
+  drawOrbit(ctx, orbitState, satState, CONFIG, frame);
+  updateOrbitHUD();
+  anim = requestAnimationFrame(loopFn);
+}
+
+// Real versions land in Tasks 5–7.
+function setOrbitWarpButtons() {}
+function updateOrbitHUD() {}
+function autoOrbitSequence() {}
+function handleDeorbitHandoff() {}
+
 function beginFlight(rocket) {
   plan = autoPlan(rocket, $("deployToggle").checked);
   rocketNow = rocket;
@@ -478,6 +519,7 @@ function beginFlight(rocket) {
   orbitAwarded = false;
   reentryTimer = 0;
   warp = 1;
+  view = "ascent"; orbitState = null; satState = null; orbitPhase = "coast"; orbitLap = 0;
   $("warp").querySelectorAll("button").forEach((x) => x.classList.toggle("active", x.dataset.warp === "1"));
   resetEffects();
   rocketImg = buildRocketImage(buildIds());
@@ -505,6 +547,7 @@ function beginFlight(rocket) {
     if (last == null) last = ts;
     const realDt = Math.min(0.05, (ts - last) / 1000);
     last = ts;
+    if (view === "orbit") { orbitFrame(realDt); return; }
     // advance the sim by TIME_SCALE sim-seconds per real second, in small steps
     let simDt = realDt * CONFIG.TIME_SCALE * warp;
     while (simDt > 0 && sim.status === "flying") {
@@ -543,19 +586,11 @@ function beginFlight(rocket) {
       lastFairing = sim.fairingJettisoned;
       rocketImg = buildRocketImage(visibleParts(build, sim.stageIndex, sim.fairingJettisoned));
     }
-    // reached orbit: announce + award once, but the sim keeps coasting around
     if (sim.orbited && !orbitAwarded) {
       orbitAwarded = true;
       sfx.orbit();
       awardResults(sim);
-      $("launchBtn").disabled = false; // free to fly again while it orbits
-      const c = $("callout"); c.textContent = ""; c.className = "callout";
-    }
-    // a parachute-equipped stage de-orbits after a short coast and re-enters
-    if (sim.orbited && rocketNow.hasParachute && !sim.reentering) {
-      reentryTimer += 1;
-      const deployDone = !$("deployToggle").checked || sim.deployed;
-      if (reentryTimer > 200 && deployDone) applyAction(sim, "reenter", rocketNow);
+      enterOrbitView();
     }
     frame++;
     drawScene(ctx, sim, rocketNow, CONFIG, frame, rocketImg);
