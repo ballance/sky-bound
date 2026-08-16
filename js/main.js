@@ -549,7 +549,26 @@ function autoOrbitSequence(dt) {
     else { orbitPhase = "done"; const c = $("callout"); c.textContent = "🔥 De-orbit burn complete"; c.className = "callout"; }
   }
 }
-function handleDeorbitHandoff() {}
+function handleDeorbitHandoff() {
+  const el = orbit.orbitElements2D(orbitState, CONFIG);
+  const descending = (orbitState.x * orbitState.vx + orbitState.y * orbitState.vy) < 0; // r·v < 0
+  if (el.peri <= CONFIG.ATM_ENTRY_ALT && el.alt <= CONFIG.ATM_ENTRY_ALT && descending) {
+    view = "reentry";
+    // seed the side-view re-entry with the real orbital state (Phase 3 makes it fiery)
+    sim.altitude = el.alt;
+    sim.hSpeed = Math.hypot(orbitState.vx, orbitState.vy);
+    const r = Math.hypot(orbitState.x, orbitState.y) || 1;
+    sim.vSpeed = -Math.abs(orbitState.x * orbitState.vx + orbitState.y * orbitState.vy) / r; // downward
+    sim.orbited = false;
+    sim.reentering = true;
+    sim.status = "flying";
+    orbitState = null; satState = null;
+    $("orbitControls").hidden = true; $("orbitHud").hidden = true;
+    document.querySelector(".hud .telemetry:not(#orbitHud)").hidden = false;
+    rebuildAscentWarpButtons(); warp = 1;
+    const c = $("callout"); c.textContent = "🔥 Re-entry"; c.className = "callout";
+  }
+}
 
 function beginFlight(rocket) {
   plan = autoPlan(rocket, $("deployToggle").checked);
