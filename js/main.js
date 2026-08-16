@@ -476,7 +476,8 @@ function enterOrbitView() {
   satState = null; orbitPhase = "coast"; orbitLap = 0;
   warp = 1;
   setOrbitWarpButtons();
-  setHardEnabled(mode === "manual");
+  $("hardControls").hidden = true;
+  $("orbitControls").hidden = mode !== "manual";
   const c = $("callout"); c.textContent = "🛰️ You're in orbit!"; c.className = "callout";
 }
 
@@ -532,7 +533,22 @@ function updateOrbitHUD() {
   const clock = Math.floor(orbitState.t);
   $("clock").textContent = `ORBIT ${String(Math.floor(clock / 60)).padStart(2, "0")}:${String(clock % 60).padStart(2, "0")}`;
 }
-function autoOrbitSequence() {}
+function autoOrbitSequence(dt) {
+  if (mode !== "auto") return;
+  if (orbitPhase === "coast") {
+    if (orbitLap > 90) {
+      orbitPhase = $("deployToggle").checked ? "deploy" : "deorbit";
+    }
+  } else if (orbitPhase === "deploy") {
+    if (!orbitState.deployed) { satState = orbit.deploy(orbitState); sfx.deploy();
+      const c = $("callout"); c.textContent = "🛰️ Satellite deployed"; c.className = "callout"; }
+    orbitPhase = "deorbit";
+  } else if (orbitPhase === "deorbit") {
+    const peri = orbit.orbitElements2D(orbitState, CONFIG).peri;
+    if (peri > CONFIG.ATM_ENTRY_ALT) orbit.burn(orbitState, -1, CONFIG.BURN_DV, CONFIG);
+    else { orbitPhase = "done"; const c = $("callout"); c.textContent = "🔥 De-orbit burn complete"; c.className = "callout"; }
+  }
+}
 function handleDeorbitHandoff() {}
 
 function beginFlight(rocket) {
@@ -553,6 +569,7 @@ function beginFlight(rocket) {
   warp = 1;
   view = "ascent"; orbitState = null; satState = null; orbitPhase = "coast"; orbitLap = 0;
   $("orbitHud").hidden = true;
+  $("orbitControls").hidden = true;
   document.querySelector(".hud .telemetry:not(#orbitHud)").hidden = false;
   rebuildAscentWarpButtons();
   $("warp").querySelectorAll("button").forEach((x) => x.classList.toggle("active", x.dataset.warp === "1"));
@@ -765,6 +782,14 @@ $("hardControls").addEventListener("click", (e) => {
   const b = e.target.closest("button");
   if (!b || b.disabled || !sim || sim.status !== "flying") return;
   applyAction(sim, b.dataset.act, rocketNow);
+});
+
+$("orbitControls").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-orbit]"); if (!b || view !== "orbit") return;
+  const act = b.dataset.orbit;
+  if (act === "prograde") orbit.burn(orbitState, +1, CONFIG.BURN_DV, CONFIG);
+  else if (act === "retro" || act === "deorbit") orbit.burn(orbitState, -1, CONFIG.BURN_DV, CONFIG);
+  else if (act === "deploy" && !orbitState.deployed) { satState = orbit.deploy(orbitState); sfx.deploy(); }
 });
 
 $("warp").addEventListener("click", (e) => {

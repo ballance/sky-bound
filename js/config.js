@@ -14,7 +14,7 @@ export const CONFIG = {
   GM: 3.986e14,
   // Orbit view (phase 2)
   ORBIT_DT: 2,               // velocity-Verlet sub-step (s) — period ~5300s
-  BURN_DV: 100,              // m/s applied per prograde/retrograde burn
+  BURN_DV: 40,              // m/s applied per prograde/retrograde burn
   ORBIT_WARP_TIERS: [1, 100, 1000],
   ATM_ENTRY_ALT: 120_000,    // altitude where re-entry takes over
   EARTH_PX: 90,              // Earth disc radius on the map (px)
