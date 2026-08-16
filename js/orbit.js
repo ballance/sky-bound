@@ -35,6 +35,28 @@ export function step(state, dt, cfg = CONFIG) {
   return state;
 }
 
+// Apply a delta-v along the velocity vector (dir +1 prograde, -1 retrograde),
+// spending propellant per the rocket equation. No fuel for the burn => no-op.
+export function burn(state, dir, dv, cfg = CONFIG) {
+  const v = Math.hypot(state.vx, state.vy);
+  if (v < 1e-6 || dv <= 0) return state;
+  const mass = state.dryMass + state.fuel;
+  const used = mass * (1 - Math.exp(-dv / state.ve));
+  if (state.fuel < used) return state; // not enough propellant to complete the burn
+  state.fuel -= used;
+  const ux = state.vx / v, uy = state.vy / v;
+  state.vx += dir * dv * ux;
+  state.vy += dir * dv * uy;
+  return state;
+}
+
+// Release the payload: returns a satellite body (independent copy of the ship's
+// position + velocity) that thereafter orbits on its own. Marks the ship deployed.
+export function deploy(state) {
+  state.deployed = true;
+  return { x: state.x, y: state.y, vx: state.vx, vy: state.vy, t: 0 };
+}
+
 // Osculating orbital elements from the current state. apo/peri are ALTITUDES.
 export function orbitElements2D(state, cfg = CONFIG) {
   const r = Math.hypot(state.x, state.y) || 1;
