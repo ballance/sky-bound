@@ -471,6 +471,7 @@ function runCountdown(rocket, fromSec = 60) {
 
 function enterOrbitView() {
   view = "orbit";
+  document.querySelector(".hud .telemetry:not(#orbitHud)").hidden = true;
   orbitState = orbit.seedFromAscent(sim, rocketNow, CONFIG);
   satState = null; orbitPhase = "coast"; orbitLap = 0;
   warp = 1;
@@ -498,8 +499,39 @@ function orbitFrame(realDt) {
 }
 
 // Real versions land in Tasks 5–7.
-function setOrbitWarpButtons() {}
-function updateOrbitHUD() {}
+function setOrbitWarpButtons() {
+  const box = $("warp");
+  box.querySelectorAll("button").forEach((b) => b.remove());
+  CONFIG.ORBIT_WARP_TIERS.forEach((t, i) => {
+    const b = document.createElement("button");
+    b.dataset.warp = String(t); b.textContent = `${t}×`;
+    if (i === 0) b.classList.add("active");
+    box.appendChild(b);
+  });
+}
+function rebuildAscentWarpButtons() {
+  const box = $("warp");
+  box.querySelectorAll("button").forEach((b) => b.remove());
+  CONFIG.WARP_TIERS.forEach((t, i) => {
+    const b = document.createElement("button");
+    b.dataset.warp = String(t); b.textContent = `${t}×`;
+    if (i === 0) b.classList.add("active");
+    box.appendChild(b);
+  });
+}
+function updateOrbitHUD() {
+  $("orbitHud").hidden = false;
+  const el = orbit.orbitElements2D(orbitState, CONFIG);
+  const km = (m) => (isFinite(m) ? `${(m / 1000).toFixed(0)} km` : "escape");
+  $("oSpd").textContent = `${(el.speed / 1000).toFixed(2)} km/s`;
+  $("oApo").textContent = km(el.apo);
+  $("oPeri").textContent = km(el.peri);
+  $("oEcc").textContent = el.e.toFixed(2);
+  const dvLeft = orbitState.ve * Math.log((orbitState.dryMass + orbitState.fuel) / orbitState.dryMass);
+  $("oDv").textContent = `${(dvLeft / 1000).toFixed(1)} km/s`;
+  const clock = Math.floor(orbitState.t);
+  $("clock").textContent = `ORBIT ${String(Math.floor(clock / 60)).padStart(2, "0")}:${String(clock % 60).padStart(2, "0")}`;
+}
 function autoOrbitSequence() {}
 function handleDeorbitHandoff() {}
 
@@ -520,6 +552,9 @@ function beginFlight(rocket) {
   reentryTimer = 0;
   warp = 1;
   view = "ascent"; orbitState = null; satState = null; orbitPhase = "coast"; orbitLap = 0;
+  $("orbitHud").hidden = true;
+  document.querySelector(".hud .telemetry:not(#orbitHud)").hidden = false;
+  rebuildAscentWarpButtons();
   $("warp").querySelectorAll("button").forEach((x) => x.classList.toggle("active", x.dataset.warp === "1"));
   resetEffects();
   rocketImg = buildRocketImage(buildIds());
