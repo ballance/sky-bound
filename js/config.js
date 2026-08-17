@@ -59,7 +59,8 @@ export const CONFIG = {
   FAIRING_ALT: 45_000, // 45 km
 
   // Re-entry: the parachute opens once the stage is low and slow enough
-  CHUTE_ALT: 5_000, // 5 km
-  CHUTE_SAFE_SPEED: 350, // m/s — deploy the chute below this or it rips away
-  CHUTE_DRAG: 3.0,       // parachute deceleration factor for the gentle splashdown
+  CHUTE_ALT: 2_000, // 2 km — chute opens once slowed, low enough to keep the float brief
+  CHUTE_SAFE_SPEED: 400, // m/s — deploy the chute below this or it rips away
+  CHUTE_DRAG: 1.2,       // parachute deceleration (~8 m/s terminal, a brisk but soft splash)
+  REENTRY_DRAG_MULT: 3,  // blunt-body re-entry drag vs streamlined ascent (slows the capsule to subsonic)
 };

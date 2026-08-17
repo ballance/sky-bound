@@ -277,4 +277,15 @@ import { MILESTONES } from "./missions.js";
   assert.ok(m.check({ reentering: true, status: "crashed" }) === false, "a crash does not");
 }
 
+// the REAL recovery capsule (heavier — it drags the empty upper stage + gear down)
+// must still splash down soft, not just the light test stub.
+{
+  const rr = normalize(RECOVERY_ROCKET);
+  const s = _initState(rr);
+  s.status = "flying"; s.reentering = true; s.stageIndex = rr.stages.length - 1; s.fuel = 0;
+  s.altitude = 120_000; s.hSpeed = 7600; s.vSpeed = -600; // steep, fast entry like the real Auto de-orbit
+  for (let i = 0; i < 500000 && s.status === "flying"; i++) _step(s, CONFIG.DT, CONFIG, rr);
+  assert.ok(s.status === "splashed", `real recovery capsule should splash down soft, got ${s.status}/${s.crashReason}`);
+}
+
 console.log("ok — starter reaches real circular orbit, liftoff is gradual, underpowered rockets fall short");

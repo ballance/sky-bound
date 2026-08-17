@@ -115,11 +115,14 @@ export function step(state, dt, cfg = CONFIG, rocket) {
   state.vSpeed += aUp * dt;
   state.hSpeed += aH * dt;
 
-  // atmospheric drag: F = 0.5 * rho * v^2 * CdA, opposing the velocity vector
+  // atmospheric drag: F = 0.5 * rho * v^2 * CdA, opposing the velocity vector.
+  // On re-entry the capsule flies blunt (heat shield forward) — far higher drag
+  // than the streamlined ascent — so it slows to subsonic before the chute opens.
   const rho = cfg.RHO0 * Math.exp(-Math.max(0, state.altitude) / cfg.H_ATM);
   const spd = Math.hypot(state.vSpeed, state.hSpeed);
   if (spd > 0.01) {
-    const dragAcc = (0.5 * rho * spd * spd * cfg.CDA) / mass;
+    const cda = cfg.CDA * (state.reentering && !state.chuteOpen ? cfg.REENTRY_DRAG_MULT : 1);
+    const dragAcc = (0.5 * rho * spd * spd * cda) / mass;
     const k = Math.min(1, (dragAcc / spd) * dt); // fractional velocity removed this step
     state.vSpeed -= state.vSpeed * k;
     state.hSpeed -= state.hSpeed * k;
