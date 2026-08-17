@@ -441,13 +441,24 @@ export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0, rocketImg
   // --- ground + KSC Pad 39A (structures poke above the ground line) ---
   const groundY = h - GROUND_H + camShift;
   if (groundY < h + 320) {
-    if (groundY < h) {
-      ctx.fillStyle = "#3f6b2f"; // Florida scrub
-      ctx.fillRect(0, groundY, w, h - groundY);
-      ctx.fillStyle = "#2c4a21";
-      ctx.fillRect(0, groundY, w, 4);
+    if (state.reentering) {
+      // ocean splashdown zone: water instead of the launch pad
+      if (groundY < h) {
+        const sea = ctx.createLinearGradient(0, groundY, 0, h);
+        sea.addColorStop(0, "#2f6fa5"); sea.addColorStop(1, "#123a5f");
+        ctx.fillStyle = sea; ctx.fillRect(0, groundY, w, h - groundY);
+        ctx.fillStyle = "rgba(255,255,255,0.18)"; // swell highlights
+        for (let x = 0; x < w; x += 22) ctx.fillRect(x + (frame % 22), groundY + 3, 10, 1.5);
+      }
+    } else {
+      if (groundY < h) {
+        ctx.fillStyle = "#3f6b2f"; // Florida scrub
+        ctx.fillRect(0, groundY, w, h - groundY);
+        ctx.fillStyle = "#2c4a21";
+        ctx.fillRect(0, groundY, w, 4);
+      }
+      drawPad(ctx, w, groundY);
     }
-    drawPad(ctx, w, groundY);
   }
 
   // --- the rocket: the actual assembled build, rasterized from its part art ---
@@ -483,6 +494,10 @@ export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0, rocketImg
     ctx.beginPath();
     ctx.arc(w / 2, gy, r, 0, Math.PI * 2);
     ctx.fill();
+    if (state.reentering) { // plasma cap: a hotter white-orange core at re-entry speed
+      ctx.fillStyle = `rgba(255,240,200,${0.5 * heat})`;
+      ctx.beginPath(); ctx.arc(w / 2, gy, 6 + heat * 8, 0, Math.PI * 2); ctx.fill();
+    }
   }
   if (state.chuteOpen) drawParachute(ctx, w / 2, rocketY - dh, frame);
 
@@ -518,6 +533,13 @@ export function drawScene(ctx, state, rocket, cfg = CONFIG, frame = 0, rocketImg
   else if (state.reentering && state.chuteOpen) banner(ctx, w, "🪂  CHUTES OUT", "#ffd27a");
   else if (state.reentering) banner(ctx, w, "🔥  RE-ENTRY", "#ffb060");
   else if (state.orbited) banner(ctx, w, "🛰️  ORBIT!  🛰️", "#7ef");
+
+  if (state.status === "splashed") {
+    const wy = h - GROUND_H + camShift;
+    ctx.fillStyle = "rgba(230,245,255,0.7)";
+    for (const dx of [-14, -6, 6, 14]) { ctx.beginPath(); ctx.arc(w / 2 + dx, wy, 5, 0, Math.PI * 2); ctx.fill(); }
+    banner(ctx, w, "🌊  SPLASHDOWN", "#8fd0ff");
+  }
 
   drawBoosterCam(ctx, w, h); // first-stage recovery inset (when active)
 }
