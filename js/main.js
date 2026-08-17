@@ -566,6 +566,7 @@ function handleDeorbitHandoff() {
     sim.status = "flying";
     orbitState = null; satState = null;
     $("orbitControls").hidden = true; $("orbitHud").hidden = true;
+    $("reentryControls").hidden = mode !== "manual";
     document.querySelector(".hud .telemetry:not(#orbitHud)").hidden = false;
     rebuildAscentWarpButtons(); warp = 1;
     const c = $("callout"); c.textContent = "🔥 Re-entry"; c.className = "callout";
@@ -591,6 +592,7 @@ function beginFlight(rocket) {
   view = "ascent"; orbitState = null; satState = null; orbitPhase = "coast"; orbitLap = 0;
   $("orbitHud").hidden = true;
   $("orbitControls").hidden = true;
+  $("reentryControls").hidden = true;
   $("hardControls").hidden = mode !== "manual"; // enterOrbitView hides it; restore per mode
   document.querySelector(".hud .telemetry:not(#orbitHud)").hidden = false;
   rebuildAscentWarpButtons();
@@ -815,6 +817,11 @@ $("orbitControls").addEventListener("click", (e) => {
   if (act === "prograde") orbit.burn(orbitState, +1, CONFIG.BURN_DV, CONFIG);
   else if (act === "retro" || act === "deorbit") orbit.burn(orbitState, -1, CONFIG.BURN_DV, CONFIG);
   else if (act === "deploy" && !orbitState.deployed) { satState = orbit.deploy(orbitState); sfx.deploy(); }
+});
+
+$("reentryControls").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-reentry]"); if (!b || view !== "reentry") return;
+  if (b.dataset.reentry === "chute") applyAction(sim, "deployChute", rocketNow);
 });
 
 $("warp").addEventListener("click", (e) => {
