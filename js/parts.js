@@ -38,6 +38,11 @@ export const PARTS = {
     mass: 120, price: 6,
     blurb: "Floats you down for a safe landing.",
   },
+  heatShield: {
+    id: "heatShield", name: "Heat Shield", kind: "utility", icon: "🛡️",
+    mass: 250, price: 8,
+    blurb: "An ablative shield — survive the fire of re-entry.",
+  },
   fairing: {
     id: "fairing", name: "Payload Fairing", kind: "fairing", icon: "🔺",
     mass: 150, price: 7,

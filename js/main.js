@@ -28,6 +28,7 @@ function normalizeRocket(partIds) {
   let hasParachute = false;
   let hasLegs = false;
   let hasFairing = false;
+  let hasHeatShield = false;
   let fairingMass = 0;
   let cur = null;
   for (const item of partIds) {
@@ -50,12 +51,13 @@ function normalizeRocket(partIds) {
       probeMass += p.mass;
       if (id === "parachute") hasParachute = true;
       if (id === "legs") hasLegs = true;
+      if (id === "heatShield") hasHeatShield = true;
     } else if (p.kind === "fairing") {
       hasFairing = true;
       fairingMass += p.mass;
     }
   }
-  return { stages, probeMass, hasParachute, hasLegs, hasFairing, fairingMass };
+  return { stages, probeMass, hasParachute, hasLegs, hasFairing, fairingMass, hasHeatShield };
 }
 
 // Serial-staging total delta-v: sum of ve * ln(m0/mf) per stage, lower stages

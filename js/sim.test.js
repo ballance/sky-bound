@@ -227,4 +227,16 @@ import { initState as _initState, step as _step } from "./sim.js";
   assert.ok(st.orbited, "the starter still reaches orbit without a heat RUD");
 }
 
+// Re-entry heat: an unshielded capsule burns up; a shielded one survives the fire.
+{
+  const mk = (shield) => ({ stages: [{ thrust: 0, ve: 3600, dryMass: 900, fuel: 0 }], probeMass: 180, hasParachute: true, hasHeatShield: shield });
+  const seed = (r) => { const s = _initState(r); s.status = "flying"; s.reentering = true; s.altitude = 120_000; s.hSpeed = 7800; s.vSpeed = -200; return s; };
+  const bare = mk(false); const sb = seed(bare);
+  for (let i = 0; i < 200000 && sb.status === "flying"; i++) { _step(sb, CONFIG.DT, CONFIG, bare); }
+  assert.ok(sb.status === "crashed" && sb.crashReason === "burnup", `unshielded should burn up, got ${sb.status}/${sb.crashReason}`);
+  const shielded = mk(true); const ss = seed(shielded); let survivedHeat = false;
+  for (let i = 0; i < 200000 && ss.status === "flying"; i++) { _step(ss, CONFIG.DT, CONFIG, shielded); if (ss.altitude < 30_000) { survivedHeat = true; break; } }
+  assert.ok(survivedHeat && ss.crashReason !== "burnup", `shielded capsule should survive the heat, got ${ss.status}/${ss.crashReason} @ ${(ss.altitude/1000).toFixed(0)}km`);
+}
+
 console.log("ok — starter reaches real circular orbit, liftoff is gradual, underpowered rockets fall short");

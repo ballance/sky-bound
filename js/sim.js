@@ -155,10 +155,13 @@ export function step(state, dt, cfg = CONFIG, rocket) {
   // time spent over the Max-Q limit; ease off in time (it cools) or the airframe fails
   if (state.aeroStress > 1) state.overStressT += dt;
   else state.overStressT = Math.max(0, state.overStressT - dt * 2); // recovers at 2x
-  if (state.status === "flying" && (state.overStressT >= cfg.MAXQ_RUD_SECONDS || state.noseTemp >= cfg.NOSE_TEMP_LIMIT)) {
-    state.status = "crashed"; // rapid unplanned disassembly
-    state.crashReason = "maxq"; // broke apart under aerodynamic overstress
-    return state;
+  if (state.status === "flying") {
+    if (state.overStressT >= cfg.MAXQ_RUD_SECONDS) {
+      state.status = "crashed"; state.crashReason = "maxq"; return state;
+    }
+    if (state.noseTemp >= cfg.NOSE_TEMP_LIMIT && !rocket.hasHeatShield) {
+      state.status = "crashed"; state.crashReason = "burnup"; return state; // burned up in the fire
+    }
   }
 
   state.maxAlt = Math.max(state.maxAlt, state.altitude);
