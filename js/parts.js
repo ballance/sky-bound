@@ -55,3 +55,8 @@ export const START_KNOWLEDGE = 10;
 
 // A known-good rocket that reaches orbit — used for the "new player" default and tests.
 export const STARTER_ROCKET = ["bigEngine", "tank", "smallEngine", "tank", "probe"];
+
+// A recovery-capable build: reaches orbit AND carries a heat shield + parachute
+// home. Bigger than the starter because the gear costs delta-v. (calibration — the
+// self-test is the contract; adjust parts until it orbits with TWR >= 1.3.)
+export const RECOVERY_ROCKET = ["bigEngine", "bigTank", "booster", "smallEngine", "tank", "probe", "heatShield", "parachute"];

@@ -11,13 +11,17 @@ function normalize(ids) {
   const stages = [];
   let probeMass = 0;
   let cur = null;
+  let hasParachute = false;
+  let hasHeatShield = false;
   for (const id of ids) {
     const p = PARTS[id];
     if (p.kind === "engine") { cur = { thrust: p.thrust, ve: p.ve, dryMass: p.mass, fuel: 0 }; stages.push(cur); }
     else if (p.kind === "tank") { cur.fuel += p.fuel; cur.dryMass += p.mass; }
     else if (p.kind === "probe") probeMass += p.mass;
+    else if (p.kind === "booster") { if (stages[0]) { stages[0].thrust += p.thrust; stages[0].fuel += p.fuel; stages[0].dryMass += p.mass; } }
+    else if (p.kind === "utility") { probeMass += p.mass; if (id === "parachute") hasParachute = true; if (id === "heatShield") hasHeatShield = true; }
   }
-  return { stages, probeMass, hasParachute: false };
+  return { stages, probeMass, hasParachute, hasHeatShield };
 }
 
 const goodPlan = [
@@ -251,6 +255,19 @@ import { initState as _initState, step as _step } from "./sim.js";
   const rip = mk(true); const sr = seed(rip);
   applyAction(sr, "deployChute", rip);
   assert.ok(sr.chuteRipped && !sr.chuteOpen, "chute deployed above the safe speed rips away");
+}
+
+import { RECOVERY_ROCKET } from "./parts.js";
+// a recovery-capable build (with heat shield + parachute) still reaches orbit and lifts off
+{
+  const good2 = normalize(RECOVERY_ROCKET);
+  assert.ok(good2.hasHeatShield && good2.hasParachute, "recovery build carries a heat shield and a parachute");
+  const m = good2.probeMass + (good2.fairingMass || 0) + good2.stages.reduce((n, s) => n + s.dryMass + s.fuel, 0);
+  const twr = good2.stages[0].thrust / (m * CONFIG.G0);
+  assert.ok(twr >= 1.3, `recovery build liftoff TWR ${twr.toFixed(2)} must be >= 1.3`);
+  const pr = profile(good2, goodPlan);
+  console.log(`recovery: orbited=${pr.final.orbited} maxAlt ${(pr.final.maxAlt/1000).toFixed(0)}km hSpeed ${pr.final.maxHSpeed.toFixed(0)} twr ${twr.toFixed(2)}`);
+  assert.ok(pr.final.orbited, "the recovery build must still reach orbit with the gear aboard");
 }
 
 console.log("ok — starter reaches real circular orbit, liftoff is gradual, underpowered rockets fall short");
