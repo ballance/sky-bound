@@ -675,7 +675,7 @@ function beginFlight(rocket) {
       // ending tail: explosion for crash/abort, short for a clean landing
       if (postFrames < 0) {
         postFrames = sim.status === "crashed" || sim.status === "aborted" ? 80 : 6;
-        if (sim.status === "landed") sfx.deploy();
+        if (sim.status === "landed" || sim.status === "splashed") sfx.deploy();
         else sfx.boom();
       }
       if (postFrames > 0) { postFrames--; anim = requestAnimationFrame(loop); }
@@ -725,6 +725,9 @@ function awardResults(finalState) {
 
   const head =
     finalState.status === "aborted" ? "💥 Rapid Unscheduled Disassembly! (You hit ABORT.)" :
+    finalState.status === "splashed" ? "🌊 Splashdown! Capsule recovered." :
+    finalState.status === "crashed" && finalState.crashReason === "burnup" ? "☄️ Burned up on re-entry — add a Heat Shield to survive the fire." :
+    finalState.status === "crashed" && finalState.crashReason === "hardsplash" ? "💥 Hit the water too hard — add a Parachute." :
     finalState.status === "crashed" && finalState.crashReason === "maxq" ? "💥 Broke apart at Max-Q — ease the throttle next time!" :
     finalState.status === "crashed" ? "💥 Crashed — try more fuel or a parachute." :
     finalState.orbited ? "🛰️ You reached ORBIT! Coasting around…" :

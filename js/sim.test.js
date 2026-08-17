@@ -270,4 +270,11 @@ import { RECOVERY_ROCKET } from "./parts.js";
   assert.ok(pr.final.orbited, "the recovery build must still reach orbit with the gear aboard");
 }
 
+import { MILESTONES } from "./missions.js";
+{
+  const m = MILESTONES.find((x) => x.id === "reentry");
+  assert.ok(m.check({ reentering: true, status: "splashed" }) === true, "splashdown earns the recovery milestone");
+  assert.ok(m.check({ reentering: true, status: "crashed" }) === false, "a crash does not");
+}
+
 console.log("ok — starter reaches real circular orbit, liftoff is gradual, underpowered rockets fall short");
