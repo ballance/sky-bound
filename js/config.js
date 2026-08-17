@@ -60,4 +60,6 @@ export const CONFIG = {
 
   // Re-entry: the parachute opens once the stage is low and slow enough
   CHUTE_ALT: 5_000, // 5 km
+  CHUTE_SAFE_SPEED: 350, // m/s — deploy the chute below this or it rips away
+  CHUTE_DRAG: 3.0,       // parachute deceleration factor for the gentle splashdown
 };

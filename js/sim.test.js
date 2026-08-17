@@ -239,4 +239,18 @@ import { initState as _initState, step as _step } from "./sim.js";
   assert.ok(survivedHeat && ss.crashReason !== "burnup", `shielded capsule should survive the heat, got ${ss.status}/${ss.crashReason} @ ${(ss.altitude/1000).toFixed(0)}km`);
 }
 
+// Splashdown: shield + chute -> soft ocean splashdown; shield, no chute -> hard splash; early chute rips.
+{
+  const mk = (chute) => ({ stages: [{ thrust: 0, ve: 3600, dryMass: 900, fuel: 0 }], probeMass: 180, hasParachute: chute, hasHeatShield: true });
+  const seed = (r) => { const s = _initState(r); s.status = "flying"; s.reentering = true; s.altitude = 120_000; s.hSpeed = 7800; s.vSpeed = -200; return s; };
+  const run = (s, r) => { for (let i = 0; i < 500000 && s.status === "flying"; i++) _step(s, CONFIG.DT, CONFIG, r); return s; };
+  const ok = mk(true); const so = run(seed(ok), ok);
+  assert.ok(so.status === "splashed", `shield+chute should splash down, got ${so.status}/${so.crashReason}`);
+  const noChute = mk(false); const sn = run(seed(noChute), noChute);
+  assert.ok(sn.status === "crashed" && sn.crashReason === "hardsplash", `no chute should hard-splash, got ${sn.status}/${sn.crashReason}`);
+  const rip = mk(true); const sr = seed(rip);
+  applyAction(sr, "deployChute", rip);
+  assert.ok(sr.chuteRipped && !sr.chuteOpen, "chute deployed above the safe speed rips away");
+}
+
 console.log("ok — starter reaches real circular orbit, liftoff is gradual, underpowered rockets fall short");

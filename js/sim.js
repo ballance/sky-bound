@@ -52,6 +52,7 @@ export function initState(rocket) {
     boosterRecovered: false,
     reentering: false,
     chuteOpen: false,
+    chuteRipped: false, // a parachute deployed too fast is torn away
     noseTemp: 15, // °C, aerodynamic heating of the nose cone
     crashReason: null, // set to "maxq" when a Max-Q overstress RUD ends the flight
     maxAlt: 0,
@@ -124,16 +125,20 @@ export function step(state, dt, cfg = CONFIG, rocket) {
     state.hSpeed -= state.hSpeed * k;
   }
 
-  // re-entry: atmospheric drag bleeds off speed; the parachute adds a lot of it.
+  // re-entry: the parachute adds heavy extra drag for a gentle splashdown. It
+  // auto-opens once the capsule has slowed into the safe window (Auto + a passive
+  // pilot); deploying early via applyAction rips it (chuteRipped).
   if (state.reentering) {
-    if (rocket.hasParachute && !state.chuteOpen && state.altitude < cfg.CHUTE_ALT && state.vSpeed < 0) {
+    if (rocket.hasParachute && !state.chuteOpen && !state.chuteRipped &&
+        state.altitude < cfg.CHUTE_ALT && state.vSpeed < 0 &&
+        Math.hypot(state.vSpeed, state.hSpeed) <= cfg.CHUTE_SAFE_SPEED) {
       state.chuteOpen = true;
     }
-    const dense = Math.max(0, 1 - state.altitude / cfg.SPACE_ALT); // thicker air lower down
-    const drag = (state.chuteOpen ? 5 : 0.5) * dense;
-    const k = Math.min(1, drag * dt);
-    state.hSpeed -= state.hSpeed * k;
-    if (state.vSpeed < 0) state.vSpeed -= state.vSpeed * k; // slow the fall
+    if (state.chuteOpen) {
+      const k = Math.min(1, cfg.CHUTE_DRAG * dt);
+      state.hSpeed -= state.hSpeed * k;
+      if (state.vSpeed < 0) state.vSpeed -= state.vSpeed * k;
+    }
   }
 
   state.altitude += state.vSpeed * dt;
@@ -156,7 +161,9 @@ export function step(state, dt, cfg = CONFIG, rocket) {
   if (state.aeroStress > 1) state.overStressT += dt;
   else state.overStressT = Math.max(0, state.overStressT - dt * 2); // recovers at 2x
   if (state.status === "flying") {
-    if (state.overStressT >= cfg.MAXQ_RUD_SECONDS) {
+    // Max-Q overstress is an ascent structural limit; a heat-shielded re-entry is
+    // built to plow through far higher dynamic pressure, so don't RUD on it here.
+    if (!state.reentering && state.overStressT >= cfg.MAXQ_RUD_SECONDS) {
       state.status = "crashed"; state.crashReason = "maxq"; return state;
     }
     if (state.noseTemp >= cfg.NOSE_TEMP_LIMIT && !rocket.hasHeatShield) {
@@ -172,8 +179,13 @@ export function step(state, dt, cfg = CONFIG, rocket) {
   if (state.altitude <= 0) {
     state.altitude = 0;
     if (state.maxAlt > 20 && state.vSpeed < 0) {
-      const soft = -state.vSpeed <= cfg.CRASH_SPEED || rocket.hasParachute;
-      state.status = soft ? "landed" : "crashed";
+      const soft = -state.vSpeed <= cfg.CRASH_SPEED;
+      if (state.reentering) {
+        state.status = soft ? "splashed" : "crashed";
+        if (!soft) state.crashReason = "hardsplash";
+      } else {
+        state.status = soft || rocket.hasParachute ? "landed" : "crashed";
+      }
     }
     if (state.vSpeed < 0) state.vSpeed = 0; // pad (or standing) holds it down at 0
     if (state.status !== "flying") return state;
@@ -197,6 +209,12 @@ export function applyAction(state, action, rocket) {
   else if (action === "reenter") state.reentering = true;
   else if (action === "throttleDown") state.throttleTarget = CONFIG.BUCKET_THROTTLE;
   else if (action === "throttleUp") state.throttleTarget = 1;
+  else if (action === "deployChute") {
+    if (!state.chuteOpen && !state.chuteRipped) {
+      if (Math.hypot(state.vSpeed, state.hSpeed) > CONFIG.CHUTE_SAFE_SPEED) state.chuteRipped = true;
+      else state.chuteOpen = true;
+    }
+  }
   else if (action === "dropStage") {
     if (state.stageIndex < rocket.stages.length - 1) {
       state.stageIndex += 1;
