@@ -9,3 +9,6 @@ node_modules/
 *.tfstate.*
 *.tfplan
 tfplan
+
+# macOS
+.DS_Store
